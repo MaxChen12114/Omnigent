@@ -24,8 +24,18 @@
   // app.js / 适配器组 /api/chat 请求体时: body.customProvider = window.__byoProvider.get() || undefined
   // worker.js 命中后跳过白名单、直连该端点,仍走解限底座(未知模型默认 PROMPT_1)。
   window.__byoProvider = {
-    get() { try { var o = JSON.parse(localStorage.getItem('cfw_byo_provider_v1') || '{}'); return (o && o.endpoint && o.model) ? o : null; } catch (e) { return null; } }
-  };
+  get() {
+    try {
+      var o = JSON.parse(localStorage.getItem('cfw_byo_provider_v1') || '{}');
+      if (!o || !o.endpoint) return null;
+      // 公有版:主页下拉选中的型号优先(cfw_custom_model_v1),回落设置里手填的 model
+      var picked = (localStorage.getItem('cfw_custom_model_v1') || '').trim();
+      var model = picked || (o.model || '').trim();
+      if (!model) return null;
+      return { endpoint: o.endpoint, model: model, apiKey: o.apiKey || '', supportsThinking: o.supportsThinking === true, needsReasoningHistory: o.needsReasoningHistory === true };
+    } catch (e) { return null; }
+  }
+};
 
   // ─── 0.5 静态设置卡 JS 注入(M1:把卡 DOM 移出 index.html) ───
   // 每张卡在此创建并插入对应分类槽位,DOM 在 init 接线前就位,既有 init* 照常按 ID 接线。
@@ -771,6 +781,8 @@
     var card = document.createElement('div'); card.className = 'card'; card.id = 'byoProviderCard';
     card.innerHTML = '<h4>聊天模型 · 自定义直连</h4><p>填自带的 OpenAI 兼容端点(GPT/Qwen/GLM/Kimi/本地 vLLM 等)。填了就<b>跳过内置白名单</b>直连该端点;<b>留空则用内置 free/fast 模型</b>。自定义模型仍吃解限底座。Key <b>仅存本设备</b>、不进云同步。</p>'
       + '<div style="margin-top:8px;"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">Endpoint(/v1/chat/completions 全路径)</label><input id="byoEndpoint" type="text" placeholder="https://api.openai.com/v1/chat/completions" style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid var(--border,#333);background:transparent;color:inherit;font-size:13px;"></div>'
+      + '<div class="rowline" style="margin-top:8px;"><div></div><div class="btns"><button class="smallbtn" id="byoFetchModels">拉取该厂商全部模型</button></div></div>'
++ '<div id="byoModelsStatus" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>'
       + '<div style="margin-top:10px;"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">模型名(model)</label><input id="byoModel" type="text" placeholder="gpt-4o / qwen-max / glm-4-plus ..." style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid var(--border,#333);background:transparent;color:inherit;font-size:13px;"></div>'
       + '<div style="margin-top:10px;"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px;">API Key(本地 vLLM/ollama 可留空)</label><input id="byoKey" type="password" placeholder="Bearer Token" style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid var(--border,#333);background:transparent;color:inherit;font-size:13px;"></div>'
       + '<div class="rowline" style="margin-top:10px;align-items:center;gap:10px;"><label class="toggle" style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="byoThinking"><span>该模型支持思考(thinking,会补 reasoning 历史)</span></label></div>'
@@ -788,7 +800,41 @@
       try { localStorage.setItem(K, JSON.stringify(o)); } catch (e) {}
       setMsg();
     });
-    document.getElementById('byoClear').addEventListener('click', function () { try { localStorage.removeItem(K); } catch (e) {} ep.value = ''; md.value = ''; ky.value = ''; tk.checked = false; setMsg(); });
+    document.getElementById('byoClear').addEventListener('click', function () { try { localStorage.removeItem(K); localStorage.removeItem('cfw_custom_models_v1'); localStorage.removeItem('cfw_custom_model_v1'); } catch (e) {} ep.value = ''; md.value = ''; ky.value = ''; tk.checked = false; setMsg(); showModelsCount(); });
+
+    // ─── 公有版:拉取该厂商全系列模型 → cfw_custom_models_v1,主页下拉消费 ───
+    var modelsStatus = document.getElementById('byoModelsStatus');
+    function showModelsCount() {
+      if (!modelsStatus) return;
+      try {
+        var arr = JSON.parse(localStorage.getItem('cfw_custom_models_v1') || '[]');
+        var pick = (localStorage.getItem('cfw_custom_model_v1') || '').trim();
+        if (arr && arr.length) modelsStatus.textContent = '已拉取 ' + arr.length + ' 个模型' + (pick ? ' · 主页选中 ' + pick : '');
+        else modelsStatus.textContent = '';
+      } catch (e) { modelsStatus.textContent = ''; }
+    }
+    showModelsCount();
+    var fetchBtn = document.getElementById('byoFetchModels');
+    if (fetchBtn) fetchBtn.addEventListener('click', async function () {
+      var _ep = (ep.value || '').trim();
+      var _ky = (ky.value || '').trim();
+      if (!_ep) { if (modelsStatus) modelsStatus.textContent = '先填 Endpoint 再拉取'; return; }
+      var _old = fetchBtn.textContent; fetchBtn.disabled = true; fetchBtn.textContent = '拉取中…';
+      try {
+        var r = await fetch('/api/models?endpoint=' + encodeURIComponent(_ep) + (_ky ? '&key=' + encodeURIComponent(_ky) : ''));
+        var j = await r.json();
+        if (!r.ok || !j || j.ok === false || !Array.isArray(j.models) || !j.models.length) throw new Error((j && j.error) || ('HTTP ' + r.status));
+        localStorage.setItem('cfw_custom_models_v1', JSON.stringify(j.models));
+        var prev = (localStorage.getItem('cfw_custom_model_v1') || '').trim();
+        if (!prev || j.models.indexOf(prev) < 0) { localStorage.setItem('cfw_custom_model_v1', j.models[0]); if (md) md.value = j.models[0]; }
+        showModelsCount();
+        try { window.dispatchEvent(new CustomEvent('byo:models-changed')); } catch (e) {}
+      } catch (e) {
+        if (modelsStatus) modelsStatus.textContent = '拉取失败:' + ((e && e.message) || e);
+      } finally {
+        fetchBtn.textContent = _old; fetchBtn.disabled = false;
+      }
+    });
   }
 
   // ─── init ───

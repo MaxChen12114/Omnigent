@@ -464,9 +464,9 @@
 
     if (modeToggle) {
       modeToggle.textContent = isFast ? "\u26A1 快速" : "\u{1F7E2} 免费";
-      setIcon(modeToggle, isFast ? "modeFast" : "modeFree", isFast ? "快速" : "免费"); // 2026-06-07: 线性 SVG 图标 + 文字(覆盖上一行 emoji)
+      setIcon(modeToggle, isFast ? "modeFast" : "modeFree", isFast ? "自定义" : "免费"); // 公有版:快速档=自定义直连(图标+文字标签;上一行 textContent 是被覆盖的死代码)
       modeToggle.title = isFast
-        ? "当前：快速模式（DeepSeek 官方，按量计费）"
+        ? "自定义直连（你自带的 API · 在设置→模型API 里配置 + 拉取模型）"
         : "当前：免费模式（NVIDIA NIM）";
     }
 
@@ -1130,6 +1130,35 @@
   }
 
   function initModels() {
+    // 公有版:快速档=自定义直连(BYO)。配了端点时,主页下拉列拉取到的该厂商全系列模型(cfw_custom_models_v1),选中存 cfw_custom_model_v1。
+    if (currentMode === "fast") {
+      let _byo = null;
+      try { _byo = JSON.parse(localStorage.getItem("cfw_byo_provider_v1") || "{}"); } catch (e) { _byo = null; }
+      if (_byo && _byo.endpoint) {
+        let _models = [];
+        try { _models = JSON.parse(localStorage.getItem("cfw_custom_models_v1") || "[]"); } catch (e) { _models = []; }
+        if (!Array.isArray(_models)) _models = [];
+        if (!_models.length && _byo.model) _models = [_byo.model];
+        modelSel.innerHTML = "";
+        if (!_models.length) {
+          const _opt = document.createElement("option");
+          _opt.value = ""; _opt.textContent = "未拉取模型 · 去设置→模型API 拉取";
+          modelSel.appendChild(_opt);
+          modelSel.value = "";
+          return;
+        }
+        for (const _id of _models) {
+          const _opt = document.createElement("option");
+          _opt.value = _id; _opt.textContent = _id;
+          modelSel.appendChild(_opt);
+        }
+        const _picked = (localStorage.getItem("cfw_custom_model_v1") || "").trim();
+        const _inList = _models.indexOf(_picked) >= 0;
+        modelSel.value = _inList ? _picked : _models[0];
+        if (!_inList) localStorage.setItem("cfw_custom_model_v1", _models[0]);
+        return;
+      }
+    }
     const MODELS = currentMode === "fast" ? MODELS_FAST : MODELS_FREE;
     const DEFAULT = currentMode === "fast"
       ? (window.APP_DEFAULT_MODEL_FAST || MODELS_FAST[0]?.id)
@@ -1150,6 +1179,12 @@
 
   modelSel.addEventListener("change", () => {
     localStorage.setItem(LS_MODEL, modelSel.value);
+    // 公有版:快速档自定义直连时,主页下拉选中即记进 cfw_custom_model_v1(__byoProvider.get() 优先读它)
+    if (currentMode === "fast") {
+      let _byo = null;
+      try { _byo = JSON.parse(localStorage.getItem("cfw_byo_provider_v1") || "{}"); } catch (e) {}
+      if (_byo && _byo.endpoint && modelSel.value) localStorage.setItem("cfw_custom_model_v1", modelSel.value);
+    }
   });
 
   personaToggle.addEventListener("click", () => {
