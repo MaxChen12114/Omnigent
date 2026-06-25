@@ -1,0 +1,12 @@
+name = "omnigent"
+main = "src/worker.js"
+compatibility_date = "2026-03-11"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/api/*", "/config.js"]
+
+[[kv_namespaces]]
+binding = "TAVERN_SYNC"
+id = "在Cloudflare建好你自己的KV-namespace后填这里"

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>Omnigent</title>
+<style>
+  body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
+       font-family:system-ui,sans-serif;background:#0f0f10;color:#eee}
+  .box{width:360px;text-align:center}
+  input{width:100%;padding:10px;margin:12px 0;border-radius:8px;border:1px solid #444;
+        background:#1b1b1d;color:#eee;box-sizing:border-box}
+  button{width:100%;padding:10px;border:0;border-radius:8px;background:#3b82f6;color:#fff;cursor:pointer}
+  p{color:#888;font-size:13px}
+</style>
+</head>
+<body>
+  <div class="box">
+    <h2>连接你的 Worker</h2>
+    <p>填入你部署的 Omnigent worker 地址</p>
+    <input id="url" placeholder="https://your-worker.example.com" />
+    <button id="go">连接并记住</button>
+  </div>
+  <script>
+    const KEY = 'omnigent_worker_url';
+    const params = new URLSearchParams(location.search);
+    if (params.has('reset')) localStorage.removeItem(KEY);
+    const saved = localStorage.getItem(KEY);
+    if (saved && !params.has('reset')) location.href = saved;
+    document.getElementById('go').onclick = () => {
+      let v = document.getElementById('url').value.trim();
+      if (!v) return;
+      if (!/^https?:\/\//.test(v)) v = 'https://' + v;
+      v = v.replace(/\/+$/, '');
+      localStorage.setItem(KEY, v);
+      location.href = v;
+    };
+  </script>
+</body>
+</html>

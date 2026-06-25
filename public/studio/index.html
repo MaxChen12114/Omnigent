@@ -1,0 +1,381 @@
+<!doctype html>
+<!-- 路径: public/studio/index.html （创作工坊 · /studio/） -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>创作工坊 · 无限制 AI</title>
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-main">
+    <div class="topbar-left">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8z"/><path d="M19 14.5l.8 2.1 2.1.8-2.1.8-.8 2.1-.8-2.1-2.1-.8 2.1-.8z"/></svg>
+      </div>
+      <div class="brand-txt">
+        <div class="h1">创作工坊</div>
+        <div class="sub">写故事抽人物 · 文生图 / 改图 / 视频 —— 一站式创作</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="cost-slot" id="costWidget" style="display:inline-flex;align-items:center;margin-right:4px;"></span>
+      <a class="top-icon-btn" href="https://github.com/MaxChen12114/Unlimited-AI-Roleplay-Tavern" target="_blank" rel="noopener" aria-label="GitHub 仓库" title="GitHub 仓库">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.11.79-.25.79-.56v-2.16c-3.2.7-3.88-1.36-3.88-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.72.08-.71.08-.71 1.15.08 1.75 1.18 1.75 1.18 1.02 1.75 2.67 1.25 3.32.96.1-.74.4-1.25.72-1.54-2.56-.29-5.25-1.28-5.25-5.72 0-1.27.46-2.3 1.19-3.12-.12-.29-.52-1.46.11-3.04 0 0 .97-.31 3.19 1.19a11.1 11.1 0 0 1 5.8 0c2.22-1.5 3.19-1.19 3.19-1.19.63 1.58.23 2.75.11 3.04.74.82 1.19 1.85 1.19 3.12 0 4.45-2.7 5.43-5.28 5.72.41.35.78 1.05.78 2.11v3.12c0 .31.21.68.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <a class="top-icon-btn" href="/" aria-label="返回主站" title="返回主站">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>返回主站</span>
+      </a>
+    </div>
+  </div>
+  <nav class="tabs">
+    <button class="tab" data-tab="studio" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg> 创作生成</button>
+    <button class="tab" data-tab="image" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><circle cx="8.5" cy="9" r="1.7"/><path d="M21 15l-5-5L6 21"/></svg> 图像工坊</button>
+  </nav>
+</header>
+
+<main class="container">
+  <div class="tab-panel" id="tabStudio">
+    <section class="card">
+      <div class="phead">
+        <span class="step">1</span>
+        <span class="pico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
+        <h2>写故事</h2>
+      </div>
+      <p class="card-desc">填一句灵感种子，或留空让 AI 自由发挥。挑个模型，生成一段有人物、有画面感的故事。</p>
+      <textarea id="seed" class="textarea seed" rows="3" placeholder="给个种子设定/灵感，比如：末世废土里开二手书店的冷面女孩，和总来蹭书的机械义体少年……（留空也行，AI 自由发挥）"></textarea>
+      <div class="row toolbar">
+        <div class="field">
+          <label class="field-label" for="model">模型</label>
+          <select id="model" class="input narrow"></select>
+        </div>
+        <label class="chk" title="勾选后允许生成成人向（露骨 / 黑暗 / 禁忌）内容；不勾则按常规向书写。"><input type="checkbox" id="nsfw" /> 成人向 <span class="chk-q" aria-hidden="true">?</span></label>
+        <label class="chk" title="解限：复用主站越狱底座（需先在主站连点版本号解锁），与你的创作提示词共存；默认关闭。"><input type="checkbox" id="unlimited" /> 解限 <span class="chk-q" aria-hidden="true">?</span></label>
+        <span class="spacer"></span>
+        <button id="gen" class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.7 4.6L18 9l-4.3 1.4L12 15l-1.7-4.6L6 9z"/><path d="M19 14l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/></svg> 生成故事</button>
+        <button id="stop" class="btn ghost" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg> 停止</button>
+      </div>
+      <details class="prompt-box">
+        <summary><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg> 提示词设置（高级）</summary>
+        <div class="prompt-inner">
+          <p class="hint">下面是发给 AI 的系统提示词，可自由编辑，自动存在本浏览器。<b>「成人向」</b>勾选后，会把「成人向附加段」拼到创作提示词末尾——这就是它的作用。</p>
+          <div class="fld"><label>创作提示词（写故事用）</label><textarea id="sysStory" rows="4"></textarea></div>
+          <div class="fld"><label>成人向附加段（勾选成人向时追加）</label><textarea id="sysNsfw" rows="3"></textarea></div>
+          <div class="fld"><label>解析提示词（抽角色 + 世界书用）</label><textarea id="sysExtract" rows="6"></textarea></div>
+          <div class="row"><button id="promptReset" class="btn ghost small"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v3.5h-3.5"/></svg> 恢复默认</button><span id="promptHint" class="hint inline"></span></div>
+        </div>
+      </details>
+      <textarea id="story" class="textarea story" rows="14" placeholder="AI 写的故事会出现在这里，可自由编辑后再解析……"></textarea>
+    </section>
+
+    <section class="card">
+      <div class="phead">
+        <span class="pico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="2.2"/><circle cx="8.5" cy="10" r="1.7"/><path d="M4 17l5-4.5 3.5 3 3-2.5 4.5 4"/></svg></span>
+        <h2>图文融合（可选）</h2>
+      </div>
+      <p class="card-desc">把上面的故事按段落排版，给想配图的段落单独点「配图」，图就插在那段下面，最后可复制或导出一篇图文混排稿。配图用「图像工坊」标签里填入的 API Key。</p>
+      <div class="row">
+        <button id="fuse" class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> 排版配图</button>
+        <button id="fuseCopy" class="btn ghost" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg> 复制图文</button>
+        <button id="fuseExport" class="btn ghost" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg> 导出 HTML</button>
+        <span id="fuseHint" class="hint inline"></span>
+      </div>
+      <div id="fuseView" class="fuse-view"></div>
+    </section>
+
+    <section class="card">
+      <div class="phead">
+        <span class="step">2</span>
+        <span class="pico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/><path d="M3 12l9 4.5L21 12"/><path d="M3 16.5L12 21l9-4.5"/></svg></span>
+        <h2>解析为角色 + 世界书</h2>
+      </div>
+      <p class="card-desc">把上面的故事拆成可聊天的角色卡和世界书条目，生成后可逐字段编辑。</p>
+      <div class="row">
+        <button id="extract" class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5L12 3z"/><path d="M3 12l9 4.5L21 12"/><path d="M3 16.5L12 21l9-4.5"/></svg> 解析这段故事</button>
+        <span id="exhint" class="hint inline"></span>
+      </div>
+      <div id="result" class="result"></div>
+    </section>
+
+    <section class="card" id="savePanel" hidden>
+      <div class="phead">
+        <span class="step">3</span>
+        <span class="pico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h7"/></svg></span>
+        <h2>保存到酒馆</h2>
+      </div>
+      <p class="card-desc">勾选要留下的角色和世界书，保存后回到酒馆即可直接选用。</p>
+      <div class="row">
+        <button id="save" class="btn primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h7"/></svg> 保存勾选项</button>
+        <a class="btn ghost" href="/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> 去聊天</a>
+        <span id="savehint" class="hint inline"></span>
+      </div>
+    </section>
+  </div>
+
+  <div class="tab-panel" id="tabImage" hidden>
+    <div class="img-statusbar">
+      <div class="status"><span class="badge" id="statusBadge">准备就绪 / Ready</span></div>
+      <span class="hint" style="margin:0">注册地址 <span class="mono">https://ai.gitee.com/serverless-api</span></span>
+    </div>
+
+    <section class="card">
+      <h2>输入 API Key / Enter API Key</h2>
+      <div class="row">
+        <input id="apiKey" class="input" placeholder="Bearer Token" />
+        <label class="chk"><input type="checkbox" id="rememberKey" /> 记住（localStorage）</label>
+        <button class="btn" id="btnClearKey">清除</button>
+      </div>
+      <div class="hint">提示：本工具默认通过同站点的 <span class="mono">/img/v1/*</span> 代理转发到 <span class="mono">https://ai.gitee.com/v1</span>，避免浏览器 CORS 限制。</div>
+    </section>
+
+    <section class="card">
+      <h2>选择模型 / Model</h2>
+      <div class="row">
+        <select id="modelSel" class="input">
+          <option value="z-image">z-image（文生图 / Text-to-Image）</option>
+          <option value="Edit-2511">Edit-2511（图像编辑 / Image Edit）</option>
+          <option value="Wan2.2-I2V-A14B">Wan2.2-I2V-A14B（图生视频 / Image-to-Video）</option>
+          <option value="HunyuanVideo-1.5">HunyuanVideo-1.5（文生视频 / Text-to-Video）</option>
+          <option value="Wan2.1-T2V-14B">Wan2.1-T2V-14B（文生视频 / Text-to-Video）</option>
+        </select>
+      </div>
+    </section>
+
+    <section class="card model-panel" id="panelZ">
+      <h2>z-image（文生图 / Text-to-Image）</h2>
+      <label class="lab">提示词 Prompt（中/英均可 / CN&EN OK）</label>
+      <textarea id="zPrompt" class="textarea" rows="6" placeholder="例如：一只戴墨镜的柴犬，赛博朋克风，超清"></textarea>
+      <div class="grid2">
+        <div>
+          <label class="lab">分辨率 Resolution</label>
+          <select id="zRes" class="input"></select>
+        </div>
+        <div>
+          <label class="lab">张数 n（1-4）</label>
+          <input id="zN" class="input" type="number" min="1" max="4" value="1" />
+        </div>
+      </div>
+      <div class="hint">建议：2048 更清晰但更慢更贵；n&gt;1 会输出多张。<br/>Tip: 2048 is sharper but slower/more expensive; n&gt;1 outputs multiple images.</div>
+      <div class="row">
+        <button class="btn primary" id="btnZRun">执行 / Generate</button>
+      </div>
+    </section>
+
+    <section class="card model-panel" id="panelEdit">
+      <h2>Edit-2511（图像编辑 / Image Edit）</h2>
+      <div class="grid2">
+        <div>
+          <label class="lab">图1 Image 1</label>
+          <input id="editImg1" class="input" type="file" accept="image/png,image/jpeg,image/webp" />
+        </div>
+        <div>
+          <label class="lab">图2 Image 2</label>
+          <input id="editImg2" class="input" type="file" accept="image/png,image/jpeg,image/webp" />
+        </div>
+      </div>
+      <label class="lab">提示词 Prompt</label>
+      <textarea id="editPrompt" class="textarea" rows="5" placeholder="描述你要的编辑效果（例如：把背景换成海边日落，保留人物）"></textarea>
+      <label class="lab">任务类型 Task Types（可多选 / Multi-select）</label>
+      <div class="checks" id="editTaskTypes"></div>
+      <div class="grid2">
+        <div>
+          <label class="lab">steps num_inference_steps（1-50）</label>
+          <input id="editSteps" class="input" type="number" min="1" max="50" value="4" />
+        </div>
+        <div>
+          <label class="lab">guidance_scale（0-10）</label>
+          <input id="editGuidance" class="input" type="number" min="0" max="10" step="0.5" value="1" />
+        </div>
+      </div>
+      <label class="chk"><input type="checkbox" id="editOpenUrl" /> 完成后浏览器打开 file_url / Open in browser after done</label>
+      <div class="hint">Notes: Higher steps = slower but more detail; higher guidance = follows prompt more strongly.</div>
+      <div class="row">
+        <button class="btn primary" id="btnEditRun">执行 / Run</button>
+      </div>
+    </section>
+
+    <section class="card model-panel" id="panelWan">
+      <h2>Wan2.2-I2V-A14B（图生视频 / Image-to-Video）</h2>
+      <label class="lab">输入图片 Image</label>
+      <input id="wanImg" class="input" type="file" accept="image/png,image/jpeg,image/webp" />
+      <label class="lab">提示词 Prompt</label>
+      <textarea id="wanPrompt" class="textarea" rows="5" placeholder="描述视频风格/动作（例如：镜头缓慢推进，微风吹动头发，电影感）"></textarea>
+      <label class="lab">负面提示词 Negative Prompt（可选 / Optional）</label>
+      <textarea id="wanNeg" class="textarea" rows="3" placeholder="例如：lowres, blurry, watermark"></textarea>
+      <div class="grid3">
+        <div>
+          <label class="lab">预设 Preset</label>
+          <select id="wanPreset" class="input">
+            <option>标准 / Standard</option>
+            <option>更清晰 / Sharper</option>
+            <option>更动感 / More motion</option>
+            <option>更快 / Faster</option>
+          </select>
+        </div>
+        <div class="row-inline">
+          <button class="btn" id="btnWanApplyPreset">应用预设 / Apply</button>
+        </div>
+      </div>
+      <div class="grid3">
+        <div>
+          <label class="lab">分辨率预设 Resolution</label>
+          <select id="wanResPreset" class="input"></select>
+        </div>
+        <div>
+          <label class="lab">width 宽（64-2048）</label>
+          <input id="wanW" class="input" type="number" min="64" max="2048" step="8" value="832" />
+        </div>
+        <div>
+          <label class="lab">height 高（64-2048）</label>
+          <input id="wanH" class="input" type="number" min="64" max="2048" step="8" value="480" />
+        </div>
+      </div>
+      <div class="grid3">
+        <div>
+          <label class="lab">num_inference_steps（1-100）</label>
+          <input id="wanSteps" class="input" type="number" min="1" max="100" value="30" />
+        </div>
+        <div>
+          <label class="lab">guidance_scale（0-20）</label>
+          <input id="wanGuidance" class="input" type="number" min="0" max="20" step="0.5" value="5" />
+        </div>
+        <div>
+          <label class="lab">seed（-1=随机 / random）</label>
+          <input id="wanSeed" class="input" type="number" min="-1" max="2147483647" value="-1" />
+        </div>
+      </div>
+      <div class="grid3">
+        <label class="chk"><input type="checkbox" id="wanWatermark" /> watermark 水印</label>
+        <label class="chk"><input type="checkbox" id="wanPromptExtend" /> prompt_extend 自动扩写</label>
+        <label class="chk"><input type="checkbox" id="wanOpenUrl" /> 完成后浏览器打开 file_url</label>
+      </div>
+      <div class="grid3">
+        <div>
+          <label class="lab">帧率 FPS（1-60）</label>
+          <input id="wanFps" class="input" type="number" min="1" max="60" value="24" />
+        </div>
+        <div>
+          <label class="lab">总时长 Duration 秒（0.5-60）</label>
+          <input id="wanDuration" class="input" type="number" min="0.5" max="60" step="0.5" value="5" />
+        </div>
+        <div>
+          <label class="lab">num_frames（1-300）</label>
+          <input id="wanFrames" class="input" type="number" min="1" max="300" value="30" />
+        </div>
+      </div>
+      <div class="row">
+        <label class="chk"><input type="checkbox" id="wanAutoFrames" checked /> num_frames 自动 = FPS×5s（推荐 / Auto）</label>
+        <label class="chk"><input type="checkbox" id="wanZipSegments" /> 生成多段时：一键打包下载（zip）</label>
+      </div>
+      <div class="hint">说明：若服务端单次只能生成固定 5 秒，本工具会按你指定的 Duration 分段生成并下载。<br/>注意：浏览器端无法像桌面版那样用 ffmpeg 合并/裁剪成“一个最终 mp4”；因此多段会分别提供可播放与下载（也可勾选 zip 打包下载）。<br/>EN: If backend returns fixed-length clips, we generate segments and provide playable/downloadable mp4s (optionally zip).</div>
+      <div class="row">
+        <button class="btn primary" id="btnWanRun">执行 / Generate Video</button>
+      </div>
+    </section>
+
+    <section class="card model-panel" id="panelHunyuan">
+      <h2>HunyuanVideo-1.5（文生视频 / Text-to-Video）</h2>
+      <label class="lab">提示词 Prompt（中/英均可 / CN&EN OK）</label>
+      <textarea id="hyPrompt" class="textarea" rows="6" placeholder="例如：年轻的中国女性穿着传统红色古装，轻轻撩起头纱，特写镜头，浅景深，暖色调"></textarea>
+      <label class="lab">负面提示词 Negative Prompt（可选 / Optional）</label>
+      <textarea id="hyNeg" class="textarea" rows="3" placeholder="例如：lowres, blurry, watermark"></textarea>
+      <div class="grid3">
+        <div>
+          <label class="lab">画面比例 Aspect Ratio</label>
+          <select id="hyAspect" class="input">
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+            <option value="1:1">1:1</option>
+          </select>
+        </div>
+        <div>
+          <label class="lab">steps num_inferenece_steps（1-10）</label>
+          <input id="hySteps" class="input" type="number" min="1" max="10" value="10" />
+        </div>
+        <div>
+          <label class="lab">fps（1-24）</label>
+          <input id="hyFps" class="input" type="number" min="1" max="24" value="24" />
+        </div>
+      </div>
+      <div class="grid3">
+        <div>
+          <label class="lab">num_frames（81-241）</label>
+          <input id="hyFrames" class="input" type="number" min="81" max="241" value="241" />
+        </div>
+        <div>
+          <label class="lab">seed（正整数 / positive integer）</label>
+          <input id="hySeed" class="input" type="number" min="1" max="2147483647" value="1" />
+        </div>
+        <label class="chk"><input type="checkbox" id="hyOpenUrl" /> 完成后浏览器打开 file_url / Open in browser after done</label>
+      </div>
+      <div class="hint">说明：这是异步任务接口，会先返回 task_id，然后自动轮询状态直至 success/failed。<br/>EN: This is an async endpoint; we create a task, then poll status until success/failed.</div>
+      <div class="row">
+        <button class="btn primary" id="btnHyRun">执行 / Generate Video</button>
+      </div>
+    </section>
+
+    <section class="card model-panel" id="panelWan21">
+      <h2>Wan2.1-T2V-14B（文生视频 / Text-to-Video）</h2>
+      <label class="lab">提示词 Prompt（中/英均可 / CN&EN OK）</label>
+      <textarea id="w21Prompt" class="textarea" rows="6" placeholder="例如：雨后的霓虹街道，镜头缓缓平移，水面倒影闪烁，电影感"></textarea>
+      <label class="lab">负面提示词 Negative Prompt（可选 / Optional）</label>
+      <textarea id="w21Neg" class="textarea" rows="3" placeholder="例如：lowres, blurry, watermark"></textarea>
+      <div class="grid3">
+        <div>
+          <label class="lab">画面比例 Aspect Ratio</label>
+          <select id="w21Aspect" class="input">
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16</option>
+            <option value="1:1">1:1</option>
+          </select>
+        </div>
+        <div>
+          <label class="lab">steps num_inferenece_steps（1-100）</label>
+          <input id="w21Steps" class="input" type="number" min="1" max="100" value="30" />
+        </div>
+        <div>
+          <label class="lab">fps（1-60）</label>
+          <input id="w21Fps" class="input" type="number" min="1" max="60" value="24" />
+        </div>
+      </div>
+      <div class="grid3">
+        <div>
+          <label class="lab">num_frames（1-300）</label>
+          <input id="w21Frames" class="input" type="number" min="1" max="300" value="120" />
+        </div>
+        <div>
+          <label class="lab">seed（正整数，留空随机 / positive int, blank=random）</label>
+          <input id="w21Seed" class="input" type="number" min="1" max="2147483647" placeholder="随机 / random" />
+        </div>
+        <label class="chk"><input type="checkbox" id="w21OpenUrl" /> 完成后浏览器打开 file_url / Open in browser after done</label>
+      </div>
+      <div class="hint">说明：与 HunyuanVideo 同为异步文生视频接口（async/videos/generations），先返回 task_id，再自动轮询至 success/failed。<br/>EN: Async text-to-video; creates a task then polls until success/failed.</div>
+      <div class="row">
+        <button class="btn primary" id="btnW21Run">执行 / Generate Video</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row row-between">
+        <h2>输出 / Output</h2>
+        <div class="row-inline">
+          <button class="btn" id="btnClearOutput">清空输出</button>
+        </div>
+      </div>
+      <div id="output" class="output"></div>
+    </section>
+
+    <div class="img-footer">Powered by Cloudflare Workers proxy • 请使用者自觉遵守所在国家的法律，切勿触犯法律界限 • Please consciously comply with the laws of your country and do not cross legal boundaries.</div>
+  </div>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/config.js"></script>
+<script src="/js/cost-widget.js"></script>
+<script src="./app.js"></script>
+<script src="/image/app.js"></script>
+</body>
+</html>

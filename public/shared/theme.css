@@ -1,0 +1,11 @@
+/* public/shared/theme.css
+   Omnigent 卫星页公共主题底座（壳层 · 极简硬朗设计语言族：--panel / --ac 命名）。
+   单一真相来源：coding / write / flow 等独立模式页统一通过
+   <link rel="stylesheet" href="/shared/theme.css"> 引用本文件，不再各自重复定义 :root 令牌。
+   注：image / studio 使用 --card / --accent 卡片族令牌，主站 index.html 体量较大，
+   均留待后续切片单独并入，避免一次性大改动。 */
+:root{
+  --bg:#0b0b0b; --panel:#141414; --panel2:#1a1a1a; --panel3:#222;
+  --border:#222; --text:#ececec; --muted:#9a9a9a;
+  --ac:#cfcfcf; --ac-soft:rgba(207,207,207,.14); --ac-strong:#e8e8e8; --danger:#e8607d;
+}

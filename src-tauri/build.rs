@@ -1,0 +1,29 @@
+fn main() {
+    tauri_build::try_build(
+        tauri_build::Attributes::new().app_manifest(
+            tauri_build::AppManifest::new().commands(&[
+                "ping",
+                "open_external",
+                "read_text_file",
+                "import_text_file",
+                "export_text_file",
+                "get_storage_dir",
+                "set_storage_dir",
+                "pick_storage_dir",
+                "open_storage_dir",
+                "kv_set",
+                "kv_get",
+                "kv_list",
+                "kv_delete",
+                "http_request",
+                "http_request_stream",
+                "tts_get_config",
+                "tts_set_config",
+                "tts_start",
+                "tts_stop",
+                "tts_pick_dir",
+            ]),
+        ),
+    )
+    .expect("failed to run tauri-build");
+}

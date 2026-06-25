@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<!-- 路径: public/index.html （酒馆主页 · 根 /） -->
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Chat Chat</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/styles-2.css" />
+  <!-- PWA: 可安装应用外壳(manifest + 各平台 meta);图标依赖 /assets/icon-192.png 与 icon-512.png -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#15161a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Chat" />
+  <link rel="apple-touch-icon" href="/assets/icon-192.png" />
+  <!-- 2026-05-29: Settings 移动端字体协调修复 (克制裁减不折腾 styles.css) -->
+  <style>
+    @media (max-width: 640px) {
+      #settings #settingsHeader h3 { font-size: 18px; margin: 0 0 4px; }
+      #settings #settingsHeader .hint { font-size: 12px; line-height: 1.5; }
+      #settings .card h4 { font-size: 15px; line-height: 1.4; font-weight: 600; letter-spacing: 0.01em; margin: 0 0 8px; }
+      #settings .card p { font-size: 13px; line-height: 1.65; }
+      #settings .card label { font-size: 13px; }
+      #settings .card code { font-size: 11.5px; padding: 1px 5px; border-radius: 3px; }
+      #settings .card .toggle label { font-size: 13px; }
+      #settings .card .smallbtn { font-size: 12px; }
+      /* 4.70: settings 手机端 flex-wrap 修复 */
+      #settings .rowline { flex-wrap: wrap; gap: 8px; }
+      #settings .toggle  { flex-wrap: wrap; }
+      #settings .btns    { flex-wrap: wrap; gap: 6px; }
+    }
+    /* 互动模式 卡 NSFW 等级单选 */
+    #settings .nsfw-options { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    #settings .nsfw-option { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--border, #333); border-radius: 6px; cursor: pointer; font-size: 13px; transition: background .15s; }
+    #settings .nsfw-option:hover { background: rgba(127,127,127,0.08); }
+    #settings .nsfw-option input[type="radio"] { margin: 0; }
+    @media (min-width: 641px) {
+      #settings .nsfw-options { grid-template-columns: repeat(4, 1fr); }
+    }
+    /* 4.18 (fix): 独立 toggle 隐藏统计小字 (token/速度/累计费用) */
+    /* styles.css 里 .hide-msg-actions 旧规则会一并隐 .stats,这里用 !important revert 拆开 */
+    html.hide-msg-actions .stats { display: block !important; }
+    html.hide-stats .stats { display: none !important; }
+    /* 4.20: 顶栏组件可开关 - 实时资金按钮 #costDisplay 关闭后,topbar-spacer 自动吸收空隙紧凑剩余按钮 */
+    html.hide-topbar-cost #costDisplay { display: none !important; }
+    /* 2026-06-07 顶栏 emoji→线性 SVG:统一 #topbar 内 .iconbtn 的 SVG 尺寸,currentColor 随主题(集中一处,后续换图标只改 SVG 本身) */
+    #topbar .iconbtn svg { width: 18px; height: 18px; display: block; }
+    /* 2026-06-07 模式键(免费/快速)= 线性 SVG 图标 + 文字标签;手机端隐藏文字只留图标(顶栏瘦身),桌面端图标+文字 */
+    #topbar #modeToggle { display: inline-flex; align-items: center; gap: 6px; }
+    #topbar #modeToggle .btn-text { font-size: 13px; line-height: 1; }
+    @media (max-width: 640px) { #topbar #modeToggle .btn-text { display: none; } }
+    /* 2026-06-08 解限/自定义键:原裸图标太隐晦 → 改「图标 + 文字标签」(对齐参考稿的「解限」文字)。桌面显示文字,手机端只留图标省空间 */
+    #topbar #personaToggle { width: auto; display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; }
+    /* 2026-06-08 修复「解限键仍是圆胶囊」: 解限/模式 在 styles.css 里共享同一条 #topbar #personaToggle,#topbar #modeToggle 的 9px pill 规则, 但解限键实测仍渲染成圆 —— 疑 styles.css 下半段残留一条更靠后/更高特异性的旧 #personaToggle 圆角规则(4.5「圆按钮形态」遗留 border-radius)按源序盖掉了 9px。本 head 内联块晚于 styles.css 加载, 用 !important 钉死 9px(含 .unlocked 态), 强制与模式键同款 pill; 根因清理留待 styles.css 全量同步时删那条旧规则。 */
+    #topbar #personaToggle,
+    html.unlocked #topbar #personaToggle { border-radius: 9px !important; }
+    #topbar #personaToggle .btn-text { font-size: 13px; line-height: 1; }
+    @media (max-width: 640px) { #topbar #personaToggle .btn-text { display: none; } #topbar #personaToggle { padding: 0; width: 38px; } }
+    /* 2026-06-08 免费模式顶栏占位:免费 / 无消费时 #costDisplay 补占位文案,弱化显示填补中段空隙(item7) */
+    #costDisplay.cost-placeholder { opacity: .5; }
+    /* 2026-06-08 手机端开发者工具「更多」下拉:收纳 ⏸/🛠 dev 按钮,避免窄屏顶栏换行冲突(item6) */
+    #topbarMoreMenu { position: absolute; z-index: 9999; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; background: var(--bubble-ai, #161616); border: 1px solid var(--border, #2a2a2a); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+    #topbarMoreMenu .iconbtn { width: auto; height: 34px; justify-content: flex-start; gap: 8px; padding: 6px 12px; }
+    /* 思考过程折叠块:隐藏浏览器默认实心三角 marker,只用自定义 SVG 图标 */
+    details.reasoning-block > summary { list-style: none; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+    details.reasoning-block > summary::marker { display: none; }
+    details.reasoning-block > summary::-webkit-details-marker { display: none; }
+    /* 4.38-ui: 思考按钮去 🧠 emoji,改简洁 sparkle 线性图标 + 文字;active 态紫色微光,与 send 的线性 SVG 风格统一 */
+    #thinkToggle { display: inline-flex; align-items: center; gap: 5px; }
+    #thinkToggle .think-ico { width: 15px; height: 15px; flex: none; opacity: .65; transition: opacity .15s, transform .15s, filter .15s, color .15s; }
+    #thinkToggle:hover:not(:disabled) .think-ico { opacity: 1; }
+    #thinkToggle.active .think-ico { opacity: 1; color: inherit; filter: drop-shadow(0 0 3px rgba(127,127,127,.45)); transform: scale(1.06); }
+    #thinkToggle.active .think-label { color: inherit; }
+    #thinkToggle:disabled .think-ico { opacity: .35; }
+    /* 4.39-ui: 左侧栏 + 移动 tab 图标统一为线性 SVG;用 currentColor 继承各主题文字色,无需维护多套图标 */
+    .sidebar-btn-icon, .mobile-tab-icon { display: inline-flex; align-items: center; justify-content: center; }
+    .sidebar-btn-icon svg { width: 18px; height: 18px; display: block; }
+    .mobile-tab-icon svg { width: 22px; height: 22px; display: block; }
+    .sidebar-btn-disabled .sidebar-btn-icon svg { opacity: .55; }
+    /* 2026-06-08 手机底部标签条精致化(item4):仅视觉,不动 styles.css 的定位 / 滚动隐藏(body.nav-hidden 位移)。鱼缸/形象/场景均已上线,摘要为计划中禁用占位。不写 #mobileBottomTabs 的 display/position/transform,避免盖过桌面隐藏与滚动隐藏逻辑 */
+    #mobileBottomTabs { gap: 2px; padding: 4px 6px calc(4px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(127,127,127,.16); background: var(--bubble-ai, rgba(20,20,20,.92)); backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px); }
+    #mobileBottomTabs .mobile-tab-btn { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; flex: 1; padding: 6px 0 3px; border: none; background: transparent; color: var(--muted, #9a9a9a); border-radius: 10px; cursor: pointer; opacity: .85; transition: color .15s, opacity .15s, background .15s; }
+    #mobileBottomTabs .mobile-tab-btn .mobile-tab-label { font-size: 10.5px; line-height: 1; letter-spacing: .02em; }
+    #mobileBottomTabs .mobile-tab-btn:not(:disabled):hover { color: inherit; opacity: 1; background: rgba(127,127,127,.10); }
+    #mobileBottomTabs .mobile-tab-btn.active { color: inherit; opacity: 1; background: rgba(127,127,127,.16); }
+    #mobileBottomTabs .mobile-tab-btn.active::after { content: ""; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 16px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; }
+    #mobileBottomTabs .mobile-tab-btn:disabled { opacity: .3; cursor: not-allowed; }
+    /* 4.40-ui: 设置面板标题/按钮 emoji 换线性图标(currentColor 随主题,与左栏统一) */
+    #settings .card h4 { display: flex; align-items: center; gap: 8px; }
+    #settings .card h4 svg { width: 16px; height: 16px; flex: none; opacity: .85; }
+    #settings .smallbtn { display: inline-flex; align-items: center; gap: 5px; }
+    #settings .smallbtn svg { width: 13px; height: 13px; flex: none; }
+    #settings #cloudExcludeSection > summary svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
+    /* 4.41-ui: 右侧栏标签化(群聊控制台 / 图像),解决图像快捷面板挤占、遮挡多智能体控制台的问题 */
+    /* 4.42-fix: 仅桌面让右栏 flex 纵向布局;移动端不写 #rightSidebar(ID) 规则,交回 styles.css 的 .right-sidebar 隐藏 + 鱼缸显隐控制。4.41 原无条件 #rightSidebar{display:flex} 因 ID 特异性盖过 styles.css 移动端 .right-sidebar{display:none},导致手机右栏常驻挡聊天 */
+    @media (min-width: 1024px) { #rightSidebar { display: flex; flex-direction: column; min-height: 0; background: var(--bubble-ai, #161616); position: relative; /* 2026-06-16: 让内部 #rsResizeHandle(position:absolute) 相对右栏定位，否则手柄会脱离流相对视口定位覆盖全页交互元素 */ } }
+    /* 2026-06-16 极简主题右栏背景兜底：4.29 改白底后右栏失去独立背景规则，白字打在白底上导致按钮「消失」+全白；各分主题已有独立 background 覆盖此兜底 */
+    #rightSidebar .rs-header { padding: 8px 8px 6px; }
+    #rightSidebar .rs-tabs { display: flex; gap: 4px; background: rgba(127,127,127,.10); border-radius: 10px; padding: 3px; }
+    #rightSidebar .rs-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; font-weight: 600; padding: 7px 8px; border: none; border-radius: 8px; background: transparent; color: inherit; opacity: .58; cursor: pointer; transition: background .15s, opacity .15s, box-shadow .15s; }
+    #rightSidebar .rs-tab svg { width: 15px; height: 15px; flex: none; }
+    #rightSidebar .rs-tab:hover { opacity: .85; }
+    #rightSidebar .rs-tab.active { opacity: 1; background: rgba(127,127,127,.22); box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    #rightSidebar .rs-tab .rs-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: none; }
+    #rightSidebar .rs-tab.has-activity .rs-dot { display: inline-block; }
+    #rightSidebar .rs-body { flex: 1; min-height: 0; display: flex; }
+    #rightSidebar .rs-panel { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 10px; }
+    #rightSidebar .rs-panel[hidden] { display: none; }
+    #rightSidebar .rs-empty { font-size: 11.5px; line-height: 1.6; opacity: .5; text-align: center; padding: 18px 12px; }
+    #rightSidebar #fishbowlSlot:not(:empty) + .rs-empty { display: none; }
+    #rightSidebar .rs-panel .sidebar-slot-placeholder { padding: 0; border: none; background: none; text-align: left; color: inherit; min-height: 0; }
+    /* 4.59: 群聊控制台「建微信群聊」入口(从左侧栏迁入);线性图标 + 双行文案,走主题变量 */
+    #rightSidebar .rs-build-group { display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; margin: 0 0 10px; padding: 10px 12px; border: 1px solid var(--border, #333); border-radius: 12px; background: rgba(127,127,127,.06); color: inherit; cursor: pointer; text-align: left; transition: border-color .15s, background .15s; }
+    #rightSidebar .rs-build-group:hover { border-color: rgba(127,127,127,.55); background: rgba(127,127,127,.10); }
+    #rightSidebar .rs-build-group .rs-build-group-ico { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border-radius: 9px; background: rgba(127,127,127,.14); color: inherit; }
+    #rightSidebar .rs-build-group .rs-build-group-ico svg { width: 17px; height: 17px; display: block; }
+    #rightSidebar .rs-build-group .rs-build-group-tx { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+    #rightSidebar .rs-build-group .rs-build-group-tx b { font-size: 13px; font-weight: 600; }
+    #rightSidebar .rs-build-group .rs-build-group-tx small { font-size: 11px; opacity: .6; line-height: 1.3; }
+    /* 4.63-ui: Settings 规整 — 分组标题 + 桌面端统一字号(消除"一会大一会小") */
+    #settings .settings-group-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: #c8c8c8; opacity: .9; margin: 24px 4px 10px; }
+    #settings .settings-group-title:first-of-type { margin-top: 4px; }
+    #settings .card h4 { font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: .01em; }
+    #settings .card > p { font-size: 13px; line-height: 1.65; }
+    #settings .card label { font-size: 13px; line-height: 1.5; }
+    #settings .card .smallbtn { font-size: 12px; }
+    /* 2026-06-08 设置面板规整 + 去 emoji:把散落的 💡/⚠️ 提示行统一为「线性 SVG 图标 + 文字」组件,字号·间距·颜色一致,消除"乱乱的"观感(与全站 SVG 图标语言对齐) */
+    #settings .settings-tip, #settings .settings-warn { display: flex; align-items: flex-start; gap: 7px; font-size: 11px; line-height: 1.6; margin-top: 10px; }
+    #settings .settings-tip { color: #888; }
+    #settings .settings-warn { color: #cf914a; }
+    #settings .settings-tip > svg, #settings .settings-warn > svg { width: 13px; height: 13px; flex: none; margin-top: 2.5px; opacity: .85; }
+    #settings .settings-tip code, #settings .settings-warn code { font-size: 11px; }
+    /* 2026-06-03: 移动端左侧抽屉可滚动修复 — 按钮多时底部 GitHub 入口被截断滑不到/卡住，nav 独立滚动 + 安全区垫底 */
+    @media (max-width: 1023px) {
+      #leftSidebar { display: flex; flex-direction: column; max-height: 100dvh; }
+      #leftSidebar .sidebar-nav { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+    }
+    /* 2026-06-04 私密解锁:未解锁时彻底隐藏一切 NSFW 相关 UI(FOUC-safe,渲染前由 head 内联脚本贴 html.unlocked) */
+    html:not(.unlocked) [data-nsfw] { display: none !important; }
+    /* 版本号小字:伪装成普通版本标记的隐秘触发点(连点 7 下) */
+    #appVersionTag { margin-top: 18px; text-align: center; font-size: 11px; color: #6a6a6a; opacity: .5; user-select: none; cursor: default; letter-spacing: .03em; }
+    /* 2026-06-08 设置卡片=展示容器、非按钮:移除 hover「升起」(删 0 6px 22px 抬起阴影 + 紫描边 #9aa3ff),改 Notion 式静态不浮起。各主题保留各自静态描边;light scheme 层另有平面 hover 反馈。分组标题左侧色条样式见下行 */
+    #settings .card { transition: border-color .15s; }
+    #settings .settings-group-title { display: flex; align-items: center; gap: 8px; }
+    #settings .settings-group-title::before { content: ""; width: 3px; height: 13px; border-radius: 2px; background: currentColor; opacity: .4; flex: none; }
+    #settingsHeader { padding-bottom: 8px; border-bottom: 1px solid rgba(127,127,127,.14); }
+    #settings::-webkit-scrollbar { width: 8px; }
+    #settings::-webkit-scrollbar-thumb { background: rgba(127,127,127,.35); border-radius: 4px; }
+    /* 主页版隐秘触发点:左侧栏底部版本小字,样式克制(像普通版本标签),连点 7 下触发访问码 */
+    #appVersionTagHome { margin: 14px 6px 4px; text-align: center; font-size: 10.5px; color: #5a5a5a; opacity: .55; user-select: none; cursor: default; letter-spacing: .03em; }
+    /* 2026-06-11 顶栏统一 + 模型名防挤裁:去掉冗余 Model 文字标签给下拉腾地、控件等高 34/圆角 9、缩小间距,避免窗口偏窄时 select 被压成「DeepSeek V」 */
+    #topbar .topbar-inner { align-items: center; gap: 6px; }
+    #topbar .pill.model-pill { display: inline-flex; align-items: center; height: 34px; padding: 0 8px; border-radius: 9px; flex: 0 0 auto; }
+    #topbar .model-pill .model-label { display: none; }
+    #topbar .model-pill #modelSel { flex: 0 0 auto; min-width: 130px; max-width: 230px; width: auto; height: 30px; border: none; background: transparent; color: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    #topbar #costDisplay.topbar-cost-inline { flex: 0 0 auto; height: 34px; white-space: nowrap; }
+    #topbar #modeToggle, #topbar #personaToggle, #topbar #settingsBtn { height: 34px; }
+    /* 2026-06-11 手机端模型名框定宽:免费/快速切换时旧 width:auto 让 select 随模型名长短变宽(两态框大小不一)。手机让 model-pill 占满中段 + select 填满到定宽,切模式不再跳动。此选择器含 #modelSel(2 id)特异性 >= 旧规则,且更靠后 */
+    @media (max-width: 768px) {
+      #topbar .pill.model-pill { flex: 1 1 auto; min-width: 0; justify-content: center; }
+      #topbar .model-pill #modelSel { width: 100%; min-width: 0; max-width: 200px; }
+    }
+    /* 2026-06-11 修复「少女 Doll」标题在少女主题下隐身:基础 :checked 规则把选中项标题写死 #fff(白),少女主题亮底卡片上白字看不见(蜜桃暗底反而没事)。按主题补回深酒红标题,含 #settings 特异性盖过基础 :checked 规则 */
+    html[data-theme=lewd-doll] #settings .theme-option input[type="radio"]:checked ~ .theme-text .theme-title { color: #8B0033; }
+  </style>
+  <!-- FOUC-safe 主题预应用:在 styles.css 应用前读 LS 立即贴 data-theme -->
+  <!-- 支持 minimal(默认) / glass / lewd-peach / lewd-doll;新增主题只需扩 ALLOWED 集合 -->
+  <script>
+    (function () {
+      try {
+        var unlocked = localStorage.getItem("cfw_unlocked_v1") === "1";
+        if (unlocked) document.documentElement.classList.add("unlocked");
+        var t = localStorage.getItem("cfw_theme_v1");
+        var ALLOWED = unlocked ? { glass: 1, "lewd-peach": 1, "lewd-doll": 1 } : { glass: 1 };
+        if (ALLOWED[t]) document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {}
+    })();
+  </script>
+  <!-- 2026-05-29 FOUC-safe 聊天区个性化:启动立即应用字号/字体/隐藏按钮/wechat 风格 -->
+  <script>
+    (function(){
+      try {
+        var ls = localStorage, html = document.documentElement;
+        if (ls.getItem('cfw_hide_msg_actions_v1') === '1') html.classList.add('hide-msg-actions');
+        if (ls.getItem('cfw_hide_stats_v1') === '1') html.classList.add('hide-stats');
+        // 4.20: 顶栏组件开关 (默认开,只有 LS === '0' 才隐藏)
+        if (ls.getItem('cfw_show_topbar_cost_v1') === '0') html.classList.add('hide-topbar-cost');
+        // 4.15 hotfix: 不再给 html 加 data-reply-style="wechat" — wechat 模式仅控拆气泲,不再隐藏小按钮(需隐藏请用上面独立 toggle)
+        var fs = parseInt(ls.getItem('cfw_chat_font_size_v1') || '13', 10);
+        if (fs >= 12 && fs <= 28) html.style.setProperty('--chat-font-size', fs + 'px');
+        var ff = ls.getItem('cfw_chat_font_family_v1') || '';
+        if (ff) html.style.setProperty('--chat-font-family', ff);
+      } catch (e) {}
+    })();
+  </script>
+  <!-- 2026-06-08 欢迎页(应用端独有·可关闭):仅 Tauri 桌面壳 + 会话为空 + 未关闭时显示;FOUC-safe 由 head 早脚本贴 is-desktop/welcome-dismissed,JS 观察 #chat 切 chat-empty。网页版无 is-desktop → 永不显示。配色走中性/继承,不引入紫色(对齐参考稿无紫) -->
+  <style>
+    #omnigentWelcome { display: none; }
+    html.is-desktop.chat-empty:not(.welcome-dismissed) #omnigentWelcome { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 65vh; box-sizing: border-box; padding: 48px 24px; position: relative; }
+    #omnigentWelcome .ow-close { position: absolute; top: 14px; right: 16px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background: transparent; color: inherit; opacity: .4; cursor: pointer; transition: opacity .15s, background .15s; }
+    #omnigentWelcome .ow-close:hover { opacity: .9; background: rgba(127,127,127,.14); }
+    #omnigentWelcome .ow-logo { width: 60px; height: 60px; border-radius: 18px; margin-bottom: 16px; display: inline-flex; align-items: center; justify-content: center; background: rgba(127,127,127,.12); color: inherit; opacity: .9; }
+    #omnigentWelcome .ow-logo svg { width: 30px; height: 30px; }
+    #omnigentWelcome .ow-title { font-size: 26px; font-weight: 700; letter-spacing: .01em; margin: 0 0 4px; }
+    #omnigentWelcome .ow-sub { font-size: 14px; opacity: .55; margin: 0 0 24px; }
+    #omnigentWelcome .ow-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 210px)); gap: 12px; width: 100%; max-width: 444px; }
+    #omnigentWelcome .ow-card { display: flex; align-items: center; gap: 10px; text-align: left; padding: 14px 16px; border: 1px solid var(--border, #2a2a2a); border-radius: 14px; background: var(--bubble-ai, rgba(127,127,127,.05)); color: inherit; cursor: pointer; font-size: 13.5px; line-height: 1.4; transition: transform .15s, border-color .15s, box-shadow .15s; }
+    #omnigentWelcome .ow-card:hover { transform: translateY(-2px); border-color: rgba(127,127,127,.55); box-shadow: 0 8px 22px rgba(0,0,0,.18); }
+    #omnigentWelcome .ow-card .ow-card-ico { width: 20px; height: 20px; flex: none; display: inline-flex; align-items: center; justify-content: center; opacity: .8; }
+    #omnigentWelcome .ow-card .ow-card-ico svg { width: 18px; height: 18px; display: block; }
+    @media (max-width: 560px) { #omnigentWelcome .ow-grid { grid-template-columns: 1fr; } }
+  </style>
+  <script>
+    (function(){ try { var html = document.documentElement; if (window.__TAURI__ || window.__TAURI_INTERNALS__ || window.isTauri || window.__TAURI_METADATA__ || /Tauri/i.test(navigator.userAgent) || location.protocol === 'tauri:' || location.hostname === 'tauri.localhost') html.classList.add('is-desktop'); if (localStorage.getItem('cfw_welcome_dismissed_v1') === '1') html.classList.add('welcome-dismissed'); } catch (e) {} })();
+  </script>
+  <!-- 2026-06-11 #2 右栏分主题强风格 + #3 NSFW 主题高级氛围特效(粒子/薄雾/暗角/剪影光晕)。内联晚于 styles.css→同特异性后者胜;NSFW 层带 data-nsfw 受 html.unlocked 门控,仅 lewd 主题 display:block,尊重 prefers-reduced-motion -->
+  <style>
+    /* ===== 右栏分主题强风格 ===== */
+    html[data-theme=glass] #rightSidebar { background: rgba(255,255,255,.14); backdrop-filter: saturate(150%) blur(16px); -webkit-backdrop-filter: saturate(150%) blur(16px); border-left: 1px solid rgba(255,255,255,.35); }
+    html[data-theme=glass] #rightSidebar .rs-tabs { background: rgba(255,255,255,.22); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+    html[data-theme=glass] #rightSidebar .rs-tab.active { background: rgba(255,255,255,.6); color: #1c2330; box-shadow: 0 2px 8px rgba(31,45,80,.18); }
+    html[data-theme=glass] #rightSidebar .rs-build-group { background: rgba(255,255,255,.3); border-color: rgba(255,255,255,.4); }
+    html[data-theme=glass] #rightSidebar .rs-build-group:hover { background: rgba(255,255,255,.45); }
+    html[data-theme=glass] #rightSidebar .rs-build-group .rs-build-group-ico { background: rgba(120,150,220,.22); }
+
+    html[data-theme=lewd-peach] #rightSidebar { background: linear-gradient(180deg, rgba(62,28,42,.6), rgba(40,18,28,.6)); border-left: 1px solid rgba(255,150,170,.4); box-shadow: inset 1px 0 16px rgba(255,120,150,.12); }
+    html[data-theme=lewd-peach] #rightSidebar .rs-tabs { background: rgba(255,140,160,.12); box-shadow: inset 0 0 0 1px rgba(255,160,180,.22); }
+    html[data-theme=lewd-peach] #rightSidebar .rs-tab { color: #ffd9e0; }
+    html[data-theme=lewd-peach] #rightSidebar .rs-tab.active { background: linear-gradient(135deg, rgba(255,130,160,.5), rgba(255,170,120,.42)); color: #fff; box-shadow: 0 2px 12px rgba(255,110,140,.4); }
+    html[data-theme=lewd-peach] #rightSidebar .rs-build-group { background: rgba(255,140,160,.1); border-color: rgba(255,150,170,.4); }
+    html[data-theme=lewd-peach] #rightSidebar .rs-build-group:hover { background: rgba(255,140,160,.2); border-color: rgba(255,170,190,.7); }
+    html[data-theme=lewd-peach] #rightSidebar .rs-build-group .rs-build-group-ico { background: rgba(255,150,170,.25); color: #ffe0e6; }
+    html[data-theme=lewd-peach] #rightSidebar .rs-empty { color: #ffc4d0; }
+
+    html[data-theme=lewd-doll] #rightSidebar { background: linear-gradient(180deg, rgba(255,228,240,.9), rgba(255,208,232,.9)); border-left: 1px solid rgba(255,120,180,.5); box-shadow: inset 1px 0 18px rgba(255,140,200,.2); }
+    html[data-theme=lewd-doll] #rightSidebar .rs-tabs { background: rgba(255,140,190,.22); box-shadow: inset 0 0 0 1px rgba(255,120,180,.3); }
+    html[data-theme=lewd-doll] #rightSidebar .rs-tab { color: #b03a72; }
+    html[data-theme=lewd-doll] #rightSidebar .rs-tab.active { background: linear-gradient(135deg, #ff6fae, #ff9ec4); color: #fff; box-shadow: 0 2px 12px rgba(255,90,160,.4); }
+    html[data-theme=lewd-doll] #rightSidebar .rs-build-group { background: rgba(255,255,255,.55); border-color: rgba(255,120,180,.45); }
+    html[data-theme=lewd-doll] #rightSidebar .rs-build-group:hover { background: rgba(255,255,255,.8); border-color: rgba(255,90,160,.7); }
+    html[data-theme=lewd-doll] #rightSidebar .rs-build-group .rs-build-group-tx b { color: #a83368; }
+    html[data-theme=lewd-doll] #rightSidebar .rs-build-group .rs-build-group-ico { background: rgba(255,120,180,.25); color: #b03a72; }
+    html[data-theme=lewd-doll] #rightSidebar .rs-empty { color: #b85a86; }
+
+    /* ===== NSFW 高级氛围特效层 ===== */
+    #lewdFxCanvas, #lewdFxMist, #lewdFxVignette { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 0; }
+    html[data-theme=lewd-peach] #lewdFxCanvas, html[data-theme=lewd-doll] #lewdFxCanvas,
+    html[data-theme=lewd-peach] #lewdFxMist, html[data-theme=lewd-doll] #lewdFxMist,
+    html[data-theme=lewd-peach] #lewdFxVignette, html[data-theme=lewd-doll] #lewdFxVignette { display: block; }
+    #lewdFxMist { background: radial-gradient(60% 50% at 78% 18%, rgba(255,150,170,.16), transparent 70%), radial-gradient(55% 45% at 18% 82%, rgba(255,120,160,.13), transparent 72%); opacity: calc(.4 + var(--pulse, 0) * .45); animation: lewdMistDrift 26s ease-in-out infinite alternate; mix-blend-mode: screen; }
+    html[data-theme=lewd-doll] #lewdFxMist { background: radial-gradient(60% 50% at 80% 16%, rgba(255,140,200,.22), transparent 70%), radial-gradient(55% 45% at 16% 84%, rgba(255,170,220,.18), transparent 72%); mix-blend-mode: normal; }
+    @keyframes lewdMistDrift { from { transform: translate3d(-2%, -1%, 0) scale(1.05); } to { transform: translate3d(2%, 1%, 0) scale(1.12); } }
+    #lewdFxVignette { background: radial-gradient(120% 95% at 50% 45%, transparent 56%, rgba(20,6,12,.5) 100%); }
+    html[data-theme=lewd-doll] #lewdFxVignette { background: radial-gradient(120% 95% at 50% 45%, transparent 60%, rgba(150,40,95,.22) 100%); }
+    @media (prefers-reduced-motion: reduce) { #lewdFxMist { animation: none; } }
+    /* WebGL2 着色器流体层(够色气方案):有机流动 + 液态融球 + 鼠标交互热感 + 颗粒,screen 混合不挡字;WebGL2 不可用时自动回退到上面的 CSS 薄雾 */
+    #lewdShaderCanvas { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 1; mix-blend-mode: screen; opacity: .6; }
+    html[data-theme=lewd-peach] #lewdShaderCanvas, html[data-theme=lewd-doll] #lewdShaderCanvas { display: block; }
+    html.lewd-shader-on #lewdFxMist { display: none !important; }
+    #lewdFxCanvas { z-index: 2; }
+    #lewdFxVignette { z-index: 3; }
+  </style>
+  <style>
+    /* === 设置分栏（参考 Proma 左分类 · 桌面左侧竖排 / 移动端顶部横向滚动标签） === */
+    .settings-cat-nav { display: flex; gap: 5px; margin: 4px 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+    .settings-cat-nav::-webkit-scrollbar { display: none; }
+    .settings-cat-nav .scn-item { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; line-height: 1; white-space: nowrap; padding: 8px 12px; border: 1px solid var(--border, #2a2a2a); border-radius: 10px; background: rgba(127,127,127,.06); color: inherit; opacity: .58; cursor: pointer; transition: background .15s, opacity .15s, border-color .15s, transform .1s; }
+    .settings-cat-nav .scn-item svg { width: 14px; height: 14px; flex: none; display: block; }
+    .settings-cat-nav .scn-item:hover { opacity: .88; background: rgba(127,127,127,.12); transform: translateY(-1px); }
+    .settings-cat-nav .scn-item:active { transform: translateY(0) scale(.97); }
+    .settings-cat-nav .scn-item.active { opacity: 1; background: rgba(127,127,127,.18); border-color: rgba(127,127,127,.48); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+    .set-cat { display: none; }
+    .set-cat.active { display: block; }
+    /* settingsHeader top row */
+    #settingsHeader .sh-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+    #settingsHeader .sh-close { width: 26px; height: 26px; flex: none; border-radius: 7px; border: none; background: rgba(127,127,127,.1); color: inherit; opacity: .5; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: opacity .15s, background .15s; padding: 0; }
+    #settingsHeader .sh-close:hover { opacity: 1; background: rgba(127,127,127,.22); }
+    @media (min-width: 721px) {
+      .settings-shell { display: flex; align-items: flex-start; gap: 20px; }
+      .settings-cat-nav { flex: 0 0 152px; flex-direction: column; gap: 3px; overflow-x: visible; margin: 4px 0 0; position: sticky; top: 0; align-self: flex-start; padding-right: 4px; border-right: 1px solid rgba(127,127,127,.1); }
+      .settings-cat-nav .scn-item { width: 100%; justify-content: flex-start; }
+      .settings-cat-body { flex: 1 1 auto; min-width: 0; }
+    }
+  </style>
+  <!-- 2026-06-15 Settings UI 精修 v2: pill 开关 / 卡片交互 / 面板动画 / smallbtn 反馈 / 行分隔 / 分组标题 / 输入框美化 -->
+  <style>
+    /* —— Pill 开关 · 全主题覆盖 —— */
+    #settings .toggle { align-items: center; gap: 10px; }
+    #settings .toggle input[type="checkbox"] {
+      appearance: none; -webkit-appearance: none; transform: none;
+      width: 34px; height: 19px; border-radius: 10px; flex: 0 0 34px;
+      cursor: pointer; position: relative; vertical-align: middle;
+      background: rgba(127,127,127,.18); border: 1.5px solid rgba(127,127,127,.28);
+      transition: background .22s, border-color .22s, box-shadow .22s;
+    }
+    #settings .toggle input[type="checkbox"]::after {
+      content: ""; position: absolute; left: 2.5px; top: 2.5px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: rgba(255,255,255,.4); box-shadow: 0 1px 3px rgba(0,0,0,.3);
+      transition: transform .22s cubic-bezier(.34,1.56,.64,1), background .22s;
+    }
+    #settings .toggle input[type="checkbox"]:checked {
+      background: rgba(255,255,255,.24); border-color: rgba(255,255,255,.6);
+    }
+    #settings .toggle input[type="checkbox"]:checked::after {
+      transform: translateX(15px); background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.4);
+    }
+    #settings .toggle input[type="checkbox"]:focus-visible { outline: 2px solid rgba(127,127,127,.55); outline-offset: 2px; }
+    /* glass */
+    html[data-theme="glass"] #settings .toggle input[type="checkbox"] { background: rgba(15,30,60,.1); border-color: rgba(15,30,60,.22); }
+    html[data-theme="glass"] #settings .toggle input[type="checkbox"]::after { background: #a0adbc; }
+    html[data-theme="glass"] #settings .toggle input[type="checkbox"]:checked { background: #3b82f6; border-color: #3b82f6; }
+    html[data-theme="glass"] #settings .toggle input[type="checkbox"]:checked::after { background: #fff; transform: translateX(15px); }
+    /* lewd-peach */
+    html[data-theme="lewd-peach"] #settings .toggle input[type="checkbox"] { background: rgba(255,107,157,.15); border-color: rgba(255,107,157,.28); }
+    html[data-theme="lewd-peach"] #settings .toggle input[type="checkbox"]::after { background: rgba(255,181,197,.55); }
+    html[data-theme="lewd-peach"] #settings .toggle input[type="checkbox"]:checked { background: #FF6B9D; border-color: #FF6B9D; }
+    html[data-theme="lewd-peach"] #settings .toggle input[type="checkbox"]:checked::after { background: #fff; transform: translateX(15px); }
+    /* lewd-doll */
+    html[data-theme="lewd-doll"] #settings .toggle input[type="checkbox"] { background: rgba(139,0,51,.1); border-color: rgba(139,0,51,.22); }
+    html[data-theme="lewd-doll"] #settings .toggle input[type="checkbox"]::after { background: #c4a0b0; }
+    html[data-theme="lewd-doll"] #settings .toggle input[type="checkbox"]:checked { background: #E03060; border-color: #E03060; }
+    html[data-theme="lewd-doll"] #settings .toggle input[type="checkbox"]:checked::after { background: #fff; transform: translateX(15px); }
+    /* light */
+    html[data-scheme="light"]:not([data-theme]) #settings .toggle input[type="checkbox"] { background: #e8e6e1; border-color: #d0ceca; }
+    html[data-scheme="light"]:not([data-theme]) #settings .toggle input[type="checkbox"]::after { background: #9b9a97; }
+    html[data-scheme="light"]:not([data-theme]) #settings .toggle input[type="checkbox"]:checked { background: #37352f; border-color: #37352f; }
+    html[data-scheme="light"]:not([data-theme]) #settings .toggle input[type="checkbox"]:checked::after { background: #fff; transform: translateX(15px); }
+    /* —— toggle label 可点 —— */
+    #settings .toggle label { cursor: pointer; line-height: 1.4; }
+    /* —— Card h4 去全大写 + 增大字号 —— */
+    #settings .card h4 {
+      text-transform: none !important; letter-spacing: .01em !important;
+      font-size: 14px !important; color: #ddd !important;
+      margin-bottom: 6px; font-weight: 600;
+    }
+    html[data-theme="glass"] #settings .card h4,
+    html[data-theme="lewd-doll"] #settings .card h4 { color: #1a1f2e !important; }
+    html[data-theme="lewd-peach"] #settings .card h4 { color: #FFE8EF !important; }
+    html[data-scheme="light"]:not([data-theme]) #settings .card h4 { color: #37352f !important; }
+    /* —— smallbtn 交互精修 —— */
+    #settings .smallbtn {
+      transition: background .15s, border-color .15s, transform .1s, box-shadow .15s, color .15s;
+      font-weight: 500;
+    }
+    #settings .smallbtn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,.22); }
+    #settings .smallbtn:active:not(:disabled) { transform: scale(.96) translateY(0); box-shadow: none; }
+    /* 卡片悬停背景暗化已移除:设置面板的卡是展示容器而非按钮,hover 变色没必要 */
+    /* —— 面板 open 动画 —— */
+    @keyframes settingsFadeIn { from { opacity: 0; transform: scale(.97) translateY(8px); } to { opacity: 1; transform: none; } }
+    #settings { animation: settingsFadeIn .22s cubic-bezier(.22,1,.36,1); }
+    /* —— NSFW radio 美化 —— */
+    #settings .nsfw-option input[type="radio"] {
+      appearance: none; -webkit-appearance: none; transform: none; margin: 0;
+      width: 15px; height: 15px; border-radius: 50%; flex: 0 0 15px;
+      border: 1.5px solid rgba(127,127,127,.42); background: transparent;
+      position: relative; cursor: pointer; transition: border-color .15s;
+    }
+    #settings .nsfw-option input[type="radio"]:checked { border-color: rgba(255,255,255,.9); }
+    #settings .nsfw-option input[type="radio"]:checked::after {
+      content: ""; position: absolute; inset: 3px;
+      background: #fff; border-radius: 50%;
+    }
+    html[data-theme="glass"] #settings .nsfw-option input[type="radio"] { border-color: rgba(15,30,60,.35); }
+    html[data-theme="glass"] #settings .nsfw-option input[type="radio"]:checked { border-color: #3b82f6; }
+    html[data-theme="glass"] #settings .nsfw-option input[type="radio"]:checked::after { background: #3b82f6; }
+    html[data-theme="lewd-doll"] #settings .nsfw-option input[type="radio"] { border-color: rgba(139,0,51,.35); }
+    html[data-theme="lewd-doll"] #settings .nsfw-option input[type="radio"]:checked { border-color: #E03060; }
+    html[data-theme="lewd-doll"] #settings .nsfw-option input[type="radio"]:checked::after { background: #E03060; }
+    /* —— settings 桌面竖排分隔线颜色跟主题 —— */
+    html[data-theme="glass"] .settings-cat-nav { border-right-color: rgba(15,30,60,.1); }
+    html[data-theme="lewd-peach"] .settings-cat-nav { border-right-color: rgba(255,107,157,.18); }
+    html[data-theme="lewd-doll"] .settings-cat-nav { border-right-color: rgba(139,0,51,.12); }
+    html[data-scheme="light"]:not([data-theme]) .settings-cat-nav { border-right-color: #ececea; }
+    /* —— 孤儿卡 emoji h4 降级：image-embed/portrait/quota 注入的卡 h4 若含 emoji 前缀，强制 emoji 字体走系统 emoji —— */
+    #settingsImageSlot .card h4 { font-family: inherit; }
+
+    /* ───────────────────────────────────────
+       设置面板深度精修——行分隔 / 卡片 / 输入框 / 标题语法
+       ─────────────────────────────────────── */
+    /* rowline: 去掉虚线改实线分隔 + 减少上下间距 */
+    #settings .rowline {
+      border-top: 1px solid rgba(127,127,127,.1) !important;
+      padding: 9px 0 3px;
+    }
+    #settings .rowline:first-of-type { border-top: none !important; padding-top: 3px; }
+    html[data-theme="glass"] #settings .rowline { border-top-color: rgba(15,30,60,.07) !important; }
+    html[data-theme="lewd-peach"] #settings .rowline { border-top-color: rgba(255,107,157,.1) !important; }
+    html[data-theme="lewd-doll"] #settings .rowline { border-top-color: rgba(139,0,51,.07) !important; }
+    html[data-scheme="light"]:not([data-theme]) #settings .rowline { border-top-color: #ededeb !important; }
+
+    /* 卡片左侧强调色条（hover 时出现）*/
+    #settings .card { position: relative; overflow: hidden; }
+    #settings .card::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; border-radius: 0 2px 2px 0;
+      background: rgba(127,127,127,.3); opacity: 0;
+      transition: opacity .2s;
+    }
+    /* 左侧色条 hover 出现已移除 */
+
+    /* 输入框 focus 状态 */
+    #settings input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+    #settings select:focus,
+    #settings textarea:focus {
+      outline: none;
+      border-color: rgba(127,127,127,.55) !important;
+      box-shadow: 0 0 0 3px rgba(127,127,127,.1) !important;
+    }
+    html[data-theme="glass"] #settings input:focus, html[data-theme="glass"] #settings select:focus, html[data-theme="glass"] #settings textarea:focus {
+      border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59,130,246,.12) !important;
+    }
+    html[data-theme="lewd-peach"] #settings input:focus, html[data-theme="lewd-peach"] #settings select:focus, html[data-theme="lewd-peach"] #settings textarea:focus {
+      border-color: #FF6B9D !important; box-shadow: 0 0 0 3px rgba(255,107,157,.15) !important;
+    }
+    html[data-theme="lewd-doll"] #settings input:focus, html[data-theme="lewd-doll"] #settings select:focus, html[data-theme="lewd-doll"] #settings textarea:focus {
+      border-color: #E03060 !important; box-shadow: 0 0 0 3px rgba(224,48,96,.14) !important;
+    }
+
+    /* 卡片内 select/number 输入框统一圈圆角 */
+    #settings .card select,
+    #settings .card input[type="number"] {
+      border-radius: 8px; font-size: 13px;
+      padding: 6px 10px; outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    /* settings 标题 h3 美化 */
+    #settingsHeader h3 {
+      font-size: 16px !important; font-weight: 700 !important;
+      letter-spacing: -.01em !important;
+    }
+
+    /* 分组标题左色条颜色跟主题绑定 */
+    html[data-theme="glass"] #settings .settings-group-title::before { background: #3b82f6; }
+    html[data-theme="lewd-peach"] #settings .settings-group-title::before { background: #FF6B9D; }
+    html[data-theme="lewd-doll"] #settings .settings-group-title::before { background: #E03060; }
+
+    /* btns 排列 wrap 对齐 */
+    #settings .btns { align-items: center; flex-wrap: wrap; }
+
+    /* 最终关闭按鈕简洁化 */
+    #settingsFooter { margin-top: 14px !important; padding-top: 12px !important; }
+
+  </style>
+</head>
+<body>
+<!-- 4.3 双侧栏布局:.app-shell grid 包左侧栏 + #app(中) + 右侧栏 -->
+<!-- 桌面 ≥1024px:三列 240/auto/240 常驻;手机 <1024px:左栏变 ☰ 抽屉,右栏隐藏 -->
+<div class="app-shell">
+
+  <!-- ══ 左侧栏:按钮入口 + 未来扩展槽 ══ -->
+  <!-- DOM 只一份,桌面常驻可见 / 手机 transform translateX(-102%) 隐藏,body.drawer-open 时滑出 -->
+  <aside class="left-sidebar" id="leftSidebar" aria-label="侧边面板">
+    <div class="sidebar-header">
+      <span class="sidebar-title">面板</span>
+      <button class="iconbtn sidebar-close mobile-only" id="sidebarCloseBtn" aria-label="关闭菜单">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <!-- ══ 模式 & 操作:新对话(清空当前角色/场景会话,重新开始) + 单人/多人场景切换 ══ -->
+      <div class="sidebar-section-title">模式</div>
+      <!-- 4.59: 原「角色扮演」死按钮(单/多切换已由下方「多智能体」覆盖)重做成「新对话」:复用设置里的清除本地历史逻辑(带确认),清空当前角色/场景会话并重置 UI -->
+      <button class="sidebar-btn" id="newChatBtn" title="新对话 · 清空当前角色/场景的对话记录，重新开始(会弹确认)" onclick="(function(){var b=document.getElementById('clearHistory');if(b)b.click();})()">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.3a7.7 7.7 0 0 1-11 6.96L4 19.5l1.26-5.34A7.7 7.7 0 1 1 20.5 11.3z"/><path d="M12 8.6v5.2M9.4 11.2h5.2"/></svg></span>
+        <span class="sidebar-btn-label">新对话</span>
+      </button>
+      <button class="sidebar-btn topbar-toggle" id="multiAgentToggle" title="单人 / 多人场景模式。多人模式下:角色面板出现「场景成员」管理区,卡库出现 +场景 按钮;输入框上方出现发言者选择条;AI 看到其他角色的发言但只代表自己。">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="2.7"/><path d="M3.5 18.5a5.5 5.5 0 0 1 11 0"/><path d="M16 6.2a2.7 2.7 0 0 1 0 5.2"/><path d="M17 13.2a5.5 5.5 0 0 1 3.5 5.3"/></svg></span>
+        <span class="sidebar-btn-label">多智能体</span>
+      </button>
+      <!-- 4.69 Agent 模式:从顶栏移至左侧栏「模式」分区,与多智能体并列(互斥);顶栏空间有限,放侧栏语义也更清晰 -->
+      <button class="sidebar-btn" id="agentModeBtn" title="Agent 模式：接入 AgentKernel 工具链，AI 自主调用工具解决复杂任务（与多智能体互斥）">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/><circle cx="12" cy="16" r="1.2"/></svg></span>
+        <span class="sidebar-btn-label">Agent 模式</span>
+      </button>
+      <div class="sidebar-divider"></div>
+      <!-- ══ 工作台:独立工作页,新标签打开,不影响主聊天 ══ -->
+      <div class="sidebar-section-title">工作台</div>
+      <!-- 创作工作台入口:独立 /studio/ 写故事→一键抽成角色卡+世界书 -->
+      <a class="sidebar-btn" id="studioBtn" href="/studio/" target="_blank" rel="noopener" title="创作工坊:写故事 → 一键抽成角色卡 + 世界书(独立页,新标签打开)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4-1 9.6-9.6a2 2 0 0 0-2.8-2.8L5.4 16z"/><path d="M13.5 6.3l4.2 4.2"/></svg></span>
+        <span class="sidebar-btn-label">创作工坊</span>
+      </a>
+      <a class="sidebar-btn" id="writeStudioBtn" href="/write/" target="_blank" rel="noopener" title="文档式写作台:左大纲右正文,选中文字浮起 AI 续写 / 扩写 / 润色(独立页,新标签打开)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3.5h7L18.5 8v12.5H7z"/><path d="M14 3.5V8h4.5"/><path d="M9.5 12.5h6M9.5 15.5h6M9.5 18h3.5"/></svg></span>
+        <span class="sidebar-btn-label">写作台</span>
+      </a>
+      <a class="sidebar-btn" id="codingStudioBtn" href="/flow/" target="_blank" rel="noopener" title="节点工作台:拖拽式可视化工作流(节点 = AI 工具 / GIS 处理 / 文本处理),不止于代码;洪都演示平台复用同一引擎(独立页,新标签打开)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 8l-4 4 4 4"/><path d="M15 8l4 4-4 4"/><path d="M13.2 5l-2.4 14"/></svg></span>
+        <span class="sidebar-btn-label">节点工作台</span>
+      </a>
+      <a class="sidebar-btn" id="codeIdeBtn" href="/coding/" target="_blank" rel="noopener" title="代码台:浏览器内轻量 IDE — 在线建项目存 IndexedDB、文件树管理、AI 生成/改写文件、一键导出 zip(独立页,新标签打开)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M8 10l-2.2 2.2L8 14.4"/><path d="M13 9.5l-2 5.5"/></svg></span>
+        <span class="sidebar-btn-label">代码台</span>
+      </a>
+
+      <div class="sidebar-divider"></div>
+      <!-- ══ 资源 & 设置:内容 / 外观 / 数据,按需打开 ══ -->
+      <div class="sidebar-section-title">资源</div>
+      <button class="sidebar-btn" id="characterBtn" title="角色卡:选择 / 管理 RP 角色">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.3"/><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/></svg></span>
+        <span class="sidebar-btn-label">角色卡</span>
+      </button>
+      <button class="sidebar-btn" id="propsBtn" title="道具卡:临时改变 AI 行为 / 状态 / 好感度">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.8l8 4.4v9.6l-8 4.4-8-4.4V7.2z"/><path d="M4 7.2l8 4.4 8-4.4"/><path d="M12 11.6V21"/></svg></span>
+        <span class="sidebar-btn-label">道具卡</span>
+      </button>
+
+
+
+
+
+
+
+      <!-- 4.7 解限编辑器入口：项目灵魂的 JSON 资产编辑壳。4.60: 原「世界书」「JSON 导入」两个独立入口合并进来(它们本就是打开本编辑器的「世界观」/「角色」Tab,无需各占一行),并从开发者专用转为全员可见 -->
+      <button class="sidebar-btn" id="unlimitedEditorBtn" data-nsfw title="解限编辑器:编辑 / 导入 角色卡 · 世界书 · 预设 · UI 配置的 JSON 资产(SillyTavern 兼容导入)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 7L3.5 12l5 5"/><path d="M15.5 7l5 5-5 5"/></svg></span>
+        <span class="sidebar-btn-label">解限编辑器</span>
+      </button>
+      <!-- 图像(生/改):随图像侧 image-embed 工坊上线(文生图 z-image-turbo + 改图 Qwen-Image-Edit),从「即将上线」转正。image-embed.js 运行时按 label 命中本钮并绑 open(),此处显式 onclick 兜底 -->
+      <button class="sidebar-btn" id="imageStudioModalBtn" title="图像(生/改):文生图 / 改图工坊" onclick="window.__image&&window.__image.open()">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.2a8.8 8.8 0 0 0 0 17.6c1.4 0 2-1 2-1.9 0-1.2 1-2 2.1-2H18a3 3 0 0 0 3-3c0-4.9-4-8.7-9-8.7z"/><circle cx="8" cy="11" r="1.1"/><circle cx="12" cy="8" r="1.1"/><circle cx="16" cy="10.5" r="1.1"/></svg></span>
+        <span class="sidebar-btn-label">图像(生/改)</span>
+      </button>
+
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-section-title">对话工具</div>
+      <button class="sidebar-btn" id="fileUploadBtn" title="文件上传:读取纯文本/代码文件(.txt/.md/.json/代码等),内容以代码块插入输入框,随下条消息发给 AI">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13.5 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9.5z"/><path d="M13.5 4v5.5H19"/><path d="M12 17.5V12"/><path d="M9.6 14.4L12 12l2.4 2.4"/></svg></span>
+        <span class="sidebar-btn-label">文件上传</span>
+      </button>
+      <button class="sidebar-btn" id="multiChatBtn" title="多开聊天:同一角色可建多条独立命名对话,列表切换(与「新对话·清空当前」不同——不删除其它对话)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 13.5H6.5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/><path d="M11 8.5h6.5a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H16v3l-3.5-3H11a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2z"/></svg></span>
+        <span class="sidebar-btn-label">多开聊天</span>
+      </button>
+
+      <div class="sidebar-divider"></div>
+      <!-- 2026-06-06 桌面版下载入口:指向 GitHub Releases 最新版页,GitHub 自动展示当版 NSIS .exe;放侧栏底部与 GitHub 同组。注:tauri-action 安装包文件名带版本号,故指向 /releases/latest 页,而非某个固定文件名直链(后者发新版会 404) -->
+      <a class="sidebar-btn" id="downloadDesktopBtn" href="https://github.com/MaxChen12114/Omnigent-AI/releases/latest" target="_blank" rel="noopener" title="下载 Windows 桌面版(Omnigent · NSIS .exe,双击安装)">
+        <span class="sidebar-btn-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v9.5"/><path d="M8 10l4 4 4-4"/><path d="M5 18.5h14"/></svg></span>
+        <span class="sidebar-btn-label">下载桌面版</span>
+      </a>
+      <!-- GitHub 开源地址:外链,放侧栏最底部(非功能入口) -->
+      <a class="sidebar-btn" id="githubBtn" href="https://github.com/MaxChen12114/Omnigent-AI" target="_blank" rel="noopener" title="GitHub 开源地址">
+        <span class="sidebar-btn-icon">
+          <svg height="16" width="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+          </svg>
+        </span>
+        <span class="sidebar-btn-label">GitHub</span>
+      </a>
+      <!-- 2026-06-04 隐秘入口(主页版):版本号小字,连点 7 下触发访问码(与设置底部 #appVersionTag 同机制)。伪装成普通版本标记,未解锁前不暴露任何用途 -->
+      <div id="appVersionTagHome" title="">Omnigent · v4.69</div>
+    </nav>
+  </aside>
+
+  <!-- 抽屉遮罩(仅手机可见) -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+  <!-- ══ 中间:原 #app 块不动(仅顶栏 markup 重写) ══ -->
+  <div id="app">
+    <div id="topbar">
+      <div class="topbar-shell">
+        <div class="topbar-scroll" id="topbarScroll">
+          <div class="topbar-inner">
+
+            <!-- ☰ 抽屉切换(仅手机):手机点它打开左侧抽屉 -->
+            <button class="iconbtn mobile-only" id="menuToggle" aria-label="菜单" title="打开面板"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+
+            <!-- 模式切换:免费(NVIDIA) / 快速(DeepSeek官方) -->
+            <button class="iconbtn" id="modeToggle" title="切换免费/快速模式"></button>
+
+            <!-- 4.8 左 spacer 把 model pill 推到中间(桌面生效;移动端 CSS 隐藏) -->
+            <span class="topbar-spacer-left"></span>
+
+            <div class="pill model-pill">
+              <label for="modelSel" class="model-label">Model</label>
+              <select id="modelSel"></select>
+            </div>
+
+            <!-- 💰 inline 直显 费用:桌面/手机都扫一眼可见,不再收进 popover -->
+            <span id="costDisplay" class="topbar-cost-inline" title="今日 / 总计费用(仅快速模式计费)"></span>
+
+            <!-- 弹性间距:把 [😈解限] + ☁️ 同步 + ⚙️ 设置推到右侧 -->
+            <span class="topbar-spacer"></span>
+
+            <!-- 4.5 😈 解限模式开关(项目灵魂):从左侧栏搬到顶栏 sync 左侧,圆按钮形态 -->
+            <!-- app.js 已绑定 #personaToggle 事件,DOM 仅换位,不动逻辑(textContent 切 😈 / 😇) -->
+            <!-- 2026-06-11 修复预加载时 😈 emoji 闪现:初始内容留空,交由 app.js 按当前模式渲染(自定义/解限),避免静态 emoji 先显示后被脚本替换造成的跳变 -->
+            <button class="iconbtn" id="personaToggle" data-nsfw title="解限模式 / 自定义模式切换" aria-label="解限/自定义"></button>
+
+            <!-- ☁️ 云同步实时状态(仅桌面显示;手机顶栏空间紧不显) -->
+            <div id="syncStatusIndicator" class="desktop-only" title="云同步状态">
+              <span class="sync-dot sync-idle"></span><span class="sync-text">同步</span>
+            </div>
+            <button class="iconbtn" id="settingsBtn" title="Settings · 外观风格 / 本地历史 / 自定义模板"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="history">
+      <div class="chat" id="chat">
+        <!-- 2026-06-08 欢迎页 DOM(应用端独有·可关闭):放 #chat 内,#bottom-spacer 之上;有消息时由 html.chat-empty 撤销而隐藏。复用参考稿 .empty-state 语言 -->
+        <div id="omnigentWelcome" aria-label="欢迎">
+          <button class="ow-close" id="owCloseBtn" title="关闭欢迎页" aria-label="关闭欢迎页"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          <span class="ow-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l1.6 5.3 5.3 1.6-5.3 1.6L12 17.3l-1.6-5.3L5.1 10.4l5.3-1.6z"/></svg></span>
+          <h2 class="ow-title" id="owGreeting">你好</h2>
+          <p class="ow-sub">今天想聊点什么？</p>
+          <div class="ow-grid">
+            <button class="ow-card" data-prompt="帮我写一段角色扮演的开场白，设定有趣一点。"><span class="ow-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4-1 9.6-9.6a2 2 0 0 0-2.8-2.8L5.4 16z"/><path d="M13.5 6.3l4.2 4.2"/></svg></span><span>写一段开场白</span></button>
+            <button class="ow-card" data-prompt="推荐几个有趣的角色设定，给我灵感。"><span class="ow-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.3"/><path d="M5.5 19.5a6.5 6.5 0 0 1 13 0"/></svg></span><span>推荐角色设定</span></button>
+            <button class="ow-card" data-prompt="给我讲一个引人入胜的小故事。"><span class="ow-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 3.5h7L18 8v12.5H6.5z"/><path d="M13.5 3.5V8H18"/><path d="M9 12h6M9 15h5"/></svg></span><span>讲个故事</span></button>
+            <button class="ow-card" data-prompt="随便陪我聊聊天吧。"><span class="ow-card-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.3a7.7 7.7 0 0 1-11 6.96L4 19.5l1.26-5.34A7.7 7.7 0 1 1 20.5 11.3z"/></svg></span><span>陪我聊聊天</span></button>
+          </div>
+        </div>
+        <div id="bottom-spacer"></div>
+      </div>
+    </div>
+
+    <div class="input-floating">
+      <!-- 4.26 ⑦：思考按钮并入下方输入框内联，composer-toolbar 留空兜底（鱼缸 mode row 等若挂这里仍可用；:empty 时 CSS 隐藏不占位） -->
+      <div class="composer-toolbar"></div>
+      <div class="input-inner" id="composer">
+        <button class="chip-btn" id="thinkToggle" title="DeepSeek V4 思考模式开关(仅快速模式生效)" aria-pressed="false">
+          <svg class="think-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.4 5.1 5.1 1.4-5.1 1.4L12 16l-1.4-5.1L5.5 9.5l5.1-1.4z"/><path d="M19 14.5l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6z"/></svg>
+          <span class="think-label">思考</span>
+        </button>
+        <textarea id="msg" rows="1" placeholder="Message..."></textarea>
+        <button id="sendBtn" title="发送" aria-label="发送">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 11.5L21 3l-8.5 18-2.5-7.5L3 11.5z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div id="settingsMask">
+      <div id="settings" style="overflow-y:auto;max-height:85vh;">
+        <div id="settingsHeader">
+          <div class="sh-top">
+            <h3>设置</h3>
+            <button class="sh-close" onclick="var c=document.getElementById('closeSettings');if(c)c.click();" title="关闭设置" aria-label="关闭设置"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </div>
+          <div class="hint">本地数据保存在浏览器；启用云同步后也会上传到你的 Cloudflare KV</div>
+        </div>
+
+        <div class="settings-shell">
+        <nav class="settings-cat-nav" role="tablist" aria-label="设置分类">
+          <button type="button" class="scn-item active" data-cat="account" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/></svg>账号</button>
+          <button type="button" class="scn-item" data-cat="appearance" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>外观</button>
+          <button type="button" class="scn-item" data-cat="chat" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.3a7.7 7.7 0 0 1-11 6.96L4 19.5l1.26-5.34A7.7 7.7 0 1 1 20.5 11.3z"/></svg>对话</button>
+          <button type="button" class="scn-item" data-cat="skill" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4.5 13.5H11l-1 8.5 8.5-11.5H12z"/></svg>技能</button>
+          <button type="button" class="scn-item" data-cat="image" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M4 17.5l5-5 3.2 3.2 3.2-3.8 4.1 5"/></svg>发图</button>
+          <button type="button" class="scn-item" data-cat="modelapi" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/></svg>模型 API</button>
+          <button type="button" class="scn-item" data-cat="voice" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>语音</button>
+          <button type="button" class="scn-item" data-cat="dev" role="tab" data-dev-only><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 7L3.5 12l5 5"/><path d="M15.5 7l5 5-5 5"/></svg>开发者</button>
+          <button type="button" class="scn-item" data-cat="advanced" role="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h8M16 7h4M4 12h2M10 12h10M4 17h6M14 17h6"/><circle cx="14" cy="7" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="12" cy="17" r="2"/></svg>高级</button>
+        </nav>
+        <div class="settings-cat-body">
+
+        <div class="set-cat active" data-cat="account">
+        <div class="settings-group-title">账号 · 数据 · 同步</div>
+        <!-- 4.70 M1: 账号分类卡 DOM 移出 → settings.js mountAuthCard()(+后续云同步卡) 注入此槽 -->
+        <div id="setAccountSlot"></div>
+
+        <!-- 云同步卡 DOM 已移出 → settings.js mountSyncCard() 注入 #setAccountSlot(Auth 卡之后) -->
+
+        <!-- 本地对话记忆卡已移出 → settings.js mountLocalHistoryCard() 注入 #setChatSlot -->
+
+        </div><!-- /set-cat account -->
+
+        <div class="set-cat" data-cat="appearance">
+        <div class="settings-group-title">外观 · 界面</div>
+        <!-- 4.70 M1: 顶栏组件卡 DOM 已移出 index.html → settings.js mountTopbarCostCard() 注入此槽 -->
+        <div id="setAppearanceTopSlot"></div>
+        <div id="setAppearanceThemeSlot"></div>
+
+        </div><!-- /set-cat appearance -->
+
+        <div class="set-cat" data-cat="chat">
+        <div class="settings-group-title">对话 · 玩法</div>
+        <!-- 4.70 M1: 对话分类卡(互动模式 + 显示设置)DOM 已移出 → settings.js mountChatModeCard()/mountDisplayCard() 注入此槽 -->
+        <div id="setChatSlot"></div>
+
+
+
+        </div><!-- /set-cat chat -->
+
+        <div class="set-cat" data-cat="skill">
+        <div class="settings-group-title">技能 · Skill</div>
+        <!-- 2026-06-24 Skill 系统独立分类:skills.js mountCard() 注入 #setSkillSlot(原挂 #setChatSlot,因「对话」分类卡过多而拆出独立「技能」标签)。 -->
+        <div id="setSkillSlot"></div>
+        </div><!-- /set-cat skill -->
+
+        <div class="set-cat" data-cat="image">
+        <div class="settings-group-title">发图 · 图像</div>
+        <!-- 2026-05-29 微信发图(实验):chat-image.js 配套设置卡 -->
+        <div id="setImageChatSlot"></div>
+
+          <div id="settingsImageSlot"></div>
+        </div><!-- /set-cat image -->
+
+        <!-- 2026-06-24 模型 API 独立分类:外接模型 API 的统一入口(横切关注点,不属于任何单个玩法)。settings.js 把以下卡都注入 #setModelApiSlot:
+             · 聊天模型直连(原 BYO,原挂 #setChatSlot/「对话」)
+             · 图像 API Key(Gitee,原挂 #settingsImageSlot/「发图」)
+             以后接生图/各类外接模型 API 都归这,不再往各玩法 tab 里塞。注:本地 TTS 是本机服务(GPT-SoVITS,无外接端点/Key),不属此类,留在「语音」tab。 -->
+        <div class="set-cat" data-cat="modelapi">
+        <div class="settings-group-title">模型 API · 外接模型</div>
+        <div id="setModelApiSlot"></div>
+        </div><!-- /set-cat modelapi -->
+
+        <!-- voice tab 内容区 + slot。mountVoiceCards() → getVoiceSlot() 依赖 #settingsVoiceSlot;本地 GPT-SoVITS 是本机服务、非外接 API,故独立留此 tab。initCatNav() 在非 Tauri 环境自动隐藏 voice tab,故网页版不可见,只有桌面 App 才会展示。 -->
+        <div class="set-cat" data-cat="voice">
+        <div class="settings-group-title">语音 · TTS</div>
+        <div id="settingsVoiceSlot"></div>
+        </div><!-- /set-cat voice -->
+
+        <div class="set-cat" data-cat="dev" data-dev-only>
+        <div class="settings-group-title" data-dev-only>开发者</div>
+        <!-- 开发者工具卡 + 一键导出卡已移出 → settings.js mountDevCard() 注入此槽 -->
+        <div id="setDevSlot"></div>
+        </div><!-- /set-cat dev -->
+
+        <div class="set-cat" data-cat="advanced">
+        <div class="settings-group-title">记录 · 高级</div>
+        <div id="setCostSlot"></div>
+
+        <!-- 自定义人物模板卡已移出 → settings.js mountPersonaCard() 注入 #setChatSlot -->
+
+        </div><!-- /set-cat advanced -->
+        </div><!-- /settings-cat-body -->
+        </div><!-- /settings-shell -->
+
+        <div id="appVersionTag" title="">Omnigent · v4.69 · build 20260615</div>
+        <!-- 4.18 (fix): 关闭按钮平铺在 settings 末尾 (文档流末尾,不 sticky 占位)。原 closeSettings 在 data-dev-only 卡内会跟卡一起被普通模式隐藏导致退不出 settings,故拆出独立 rowline 放最后 -->
+        <div class="rowline" id="settingsFooter" style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(127,127,127,.18);justify-content:flex-end;">
+          <div></div>
+          <div class="btns">
+            <button class="smallbtn" id="closeSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>关闭设置</button>
+          </div>
+        </div>
+        <!-- 2026-06-04 修复:图像 API Key / 额度卡由 image-embed.js / image-quota.js 运行时 appendChild 到 #settings 末尾,晚于静态的关闭按钮,导致关闭按钮被挤到面板中间。这里在每次打开设置(+启动兜底)时把版本号+关闭按钮重新挪到最末尾,使其永远兜底在底部。挪动 DOM 不丢事件监听,版本号连点解锁触发不受影响。 -->
+        <script>
+          (function(){
+            var settings=document.getElementById('settings');
+            var tag=document.getElementById('appVersionTag');
+            var footer=document.getElementById('settingsFooter');
+            function moveToEnd(){
+              if(!settings)return;
+              if(tag&&tag.parentNode===settings)settings.appendChild(tag);
+              if(footer&&footer.parentNode===settings)settings.appendChild(footer);
+            }
+            var sb=document.getElementById('settingsBtn');
+            if(sb)sb.addEventListener('click',function(){setTimeout(moveToEnd,80);});
+            setTimeout(moveToEnd,1500);
+            setTimeout(moveToEnd,3000);
+          })();
+        </script>
+      </div>
+    </div>
+
+  </div>
+  <!-- /#app -->
+
+  <!-- ══ 右侧栏:4.41-ui 标签化(群聊控制台 / 图像),避免图像快捷面板挤占、遮挡多智能体控制台 ══ -->
+  <!-- #fishbowlSlot 仍由 multi-agent.js 挂载(id 不变);图像面板由 image-quickgen.js 注入 #imageSlot(保留 .sidebar-slot-placeholder 类,选择器零改动)。两 tab 各自独立滚动,永不重叠 -->
+  <aside class="right-sidebar" id="rightSidebar" aria-label="侧辅面板">
+    <div class="sidebar-header rs-header">
+      <div class="rs-tabs" role="tablist" aria-label="右侧面板切换">
+        <button class="rs-tab active" data-rs-tab="fishbowl" role="tab" aria-selected="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-9l-4.5 3.5V16.5H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5z"/><circle cx="8.5" cy="11" r="1"/><circle cx="12" cy="11" r="1"/><circle cx="15.5" cy="11" r="1"/></svg>
+          <span>群聊</span><span class="rs-dot" aria-hidden="true"></span>
+        </button>
+        <button class="rs-tab" data-rs-tab="image" role="tab" aria-selected="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.2"/><circle cx="8.8" cy="9.8" r="1.6"/><path d="M4.5 17l4.8-4.3 3.2 2.8 3-2.5 4 3.5"/></svg>
+          <span>图像</span><span class="rs-dot" aria-hidden="true"></span>
+        </button>
+      </div>
+    </div>
+    <div class="rs-body">
+      <section class="rs-panel active" data-rs-panel="fishbowl" role="tabpanel">
+        <!-- 4.59: 微信群聊从左侧栏「模式」迁到群聊控制台:它本质是「建群」动作而非常驻模式,且桌面端控制台空置,正好补位。唯一建跨世界群入口走 window.__wechatGroup.open() -->
+        <button type="button" class="rs-build-group" id="wgConsoleBuildBtn" title="把不同世界观的角色拉进同一个群,自动接话产生戏剧效果(基于多人模式 + 微信连发)" onclick="window.__wechatGroup&&window.__wechatGroup.open()">
+          <span class="rs-build-group-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.8 16.5L4 19V7.5A2 2 0 0 1 6 5.5h9A2 2 0 0 1 17 7.5v6A2 2 0 0 1 15 15.5H8z"/><circle cx="8" cy="10.5" r="1"/><circle cx="11.5" cy="10.5" r="1"/><circle cx="15" cy="10.5" r="1"/></svg></span>
+          <span class="rs-build-group-tx"><b>建微信群聊</b><small>拉不同世界观的角色进同一个群</small></span>
+        </button>
+        <div id="fishbowlSlot" class="sidebar-slot"></div>
+        <div class="rs-empty" id="fishbowlEmptyHint">还没有进行中的群聊。点上方「建微信群聊」拉角色进群，或开启顶栏「多智能体」手动编排发言。</div>
+      </section>
+      <section class="rs-panel" data-rs-panel="image" role="tabpanel" hidden>
+        <div id="imageSlot" class="sidebar-slot-placeholder"></div>
+      </section>
+    </div>
+  </aside>
+
+</div>
+<!-- /.app-shell -->
+
+<!-- ══ 4.4 手机底部 4-tab 标签条(仅 <1024px 显示;桌面端 display:none) ══ -->
+<!-- 2026-06-08 更正:鱼缸/形象/场景 均已上线(形象/场景 由 image-quickgen.js 运行时注入面板并解除 disabled);仅「摘要」仍为计划中。故静态只给 memo 留 disabled。底栏精致化样式见 <head> 内联 #mobileBottomTabs 段 -->
+<nav class="mobile-bottom-tabs" id="mobileBottomTabs" aria-label="底部面板切换">
+  <button class="mobile-tab-btn" data-tab="fishbowl" title="点击显示/隐藏群聊控制台（默认隐藏避免遮挡消息）">
+    <span class="mobile-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5h-9l-4.5 3.5V16.5H4A1.5 1.5 0 0 1 2.5 15V7A1.5 1.5 0 0 1 4 5.5z"/><circle cx="8.5" cy="11" r="1"/><circle cx="12" cy="11" r="1"/><circle cx="15.5" cy="11" r="1"/></svg></span>
+    <span class="mobile-tab-label">鱼缸</span>
+  </button>
+  <button class="mobile-tab-btn" data-tab="avatar" title="角色形象 · 一键生成 / 改图(图像工坊已上线)">
+    <span class="mobile-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M7 17.5a5 5 0 0 1 10 0"/></svg></span>
+    <span class="mobile-tab-label">形象</span>
+  </button>
+  <button class="mobile-tab-btn" data-tab="scene" title="场景图 · 一键生成 / 改图(图像工坊已上线)">
+    <span class="mobile-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2.2"/><circle cx="8" cy="10" r="1.4"/><path d="M4.5 16.5l4.5-4 3 2.5 3.2-3 4.3 4"/></svg></span>
+    <span class="mobile-tab-label">场景</span>
+  </button>
+  <button class="mobile-tab-btn" id="mobileAgentTab" data-tab="agent" title="Agent 模式 · 工具链自主任务">
+    <span class="mobile-tab-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="3.5"/><path d="M8.5 9h-2M17.5 9h-2"/><path d="M10 13.5c-3.5.5-6 2.5-6 5h16c0-2.5-2.5-4.5-6-5"/><path d="M10.5 6.5l-.8-1.5M13.5 6.5l.8-1.5"/></svg></span>
+    <span class="mobile-tab-label">Agent</span>
+  </button>
+</nav>
+<div class="mobile-tab-panel" id="mobileTabPanel-avatar" data-tab="avatar">角色形象 · 加载中…</div>
+<div class="mobile-tab-panel" id="mobileTabPanel-scene"  data-tab="scene">场景图 · 加载中…</div>
+<div class="mobile-tab-panel" id="mobileTabPanel-memo"   data-tab="memo">上下文摘要 · 计划中</div>
+<div class="mobile-tab-panel" id="mobileTabPanel-agent" data-tab="agent" style="top:0;padding:0;overflow:hidden;background:var(--bg,#15161a);">
+  <div id="__mobileAgentPlaceholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--muted,#888);font-size:13px;line-height:1.6;text-align:center;padding:0 24px;">
+    <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/><circle cx="12" cy="16" r="1.2"/></svg>
+    <span style="opacity:.55">点左侧「Agent 模式」开启<br>或在左侧栏点「Agent 模式」按钮</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll('.mobile-tab-btn');
+  var panels = document.querySelectorAll('.mobile-tab-panel');
+  if (!tabs.length) return;
+  tabs.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      if (btn.disabled) return;
+      var t = btn.getAttribute('data-tab');
+      // 4.8 鱼缸 tab 是 toggle：点击在 body.fishbowl-shown 上切换(CSS 控制面板 display)
+      // 4.47 形象/场景/摘要 tab 也改 toggle：点已激活的 tab = 再点一下折叠收起面板，与鱼缸一致
+      if (t === 'fishbowl') {
+        var on = !btn.classList.contains('active');
+        btn.classList.toggle('active', on);
+        document.body.classList.toggle('fishbowl-shown', on);
+        if (on) {
+          // 鱼缸打开同时关掉其他 tab 面板
+          tabs.forEach(function(b){ if (b !== btn) b.classList.remove('active'); });
+          panels.forEach(function(p){ p.classList.remove('active'); });
+        }
+        return;
+      }
+      // 非鱼缸 tab：点已激活的 = 折叠收起(再点隐藏面板)；否则切到该 tab 并顺手关鱼缸
+      if (btn.classList.contains('active')) {
+        btn.classList.remove('active');
+        panels.forEach(function(p){ p.classList.remove('active'); });
+        document.body.classList.remove('fishbowl-shown');
+        return;
+      }
+      tabs.forEach(function(b){ b.classList.toggle('active', b === btn); });
+      panels.forEach(function(p){
+        p.classList.toggle('active', p.getAttribute('data-tab') === t);
+      });
+      document.body.classList.remove('fishbowl-shown');
+    });
+  });
+})();
+</script>
+
+<!-- 2026-06-11 NSFW 主题高级氛围特效层(data-nsfw 受 unlock 门控;仅 lewd 主题 CSS display:block):流体着色器 + 薄雾 + 暗角,pointer-events:none 不挡交互。注:自绘点云剪影已移除,人物形象改走外部素材/VRM 模型 -->
+<canvas id="lewdShaderCanvas" data-nsfw aria-hidden="true"></canvas>
+<canvas id="lewdFxCanvas" data-nsfw aria-hidden="true"></canvas>
+<div id="lewdFxMist" data-nsfw aria-hidden="true"></div>
+<div id="lewdFxVignette" data-nsfw aria-hidden="true"></div>
+
+<!-- ══ 4.3 抽屉切换逻辑(手机 ☰ 点开 / 遮罩点关 / ESC 点关 / 点抽屉内按钮后自动关) ══ -->
+<script>
+(function(){
+  var body = document.body;
+  var menuBtn = document.getElementById('menuToggle');
+  var closeBtn = document.getElementById('sidebarCloseBtn');
+  var backdrop = document.getElementById('sidebarBackdrop');
+  var sidebar = document.getElementById('leftSidebar');
+  if (!menuBtn || !sidebar) return;
+  function open(){ body.classList.add('drawer-open'); }
+  function close(){ body.classList.remove('drawer-open'); }
+  menuBtn.addEventListener('click', open);
+  if (closeBtn) closeBtn.addEventListener('click', close);
+  if (backdrop) backdrop.addEventListener('click', close);
+  // 手机上点抽屉里任意可用按钮后自动关闭,避免点完还要手动 ✕
+  sidebar.addEventListener('click', function(e){
+    if (!window.matchMedia('(max-width: 1023px)').matches) return;
+    var t = e.target.closest('.sidebar-btn:not([disabled]),.sidebar-close');
+    if (!t) return;
+    if (t.id === 'sidebarCloseBtn') return; // 已独立处理
+    setTimeout(close, 60);
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && body.classList.contains('drawer-open')) close();
+  });
+})();
+</script>
+
+<!-- ══ 4.3 同步状态实时显示(订阅 __sync 事件 + 兜底定时刷新) ══ -->
+<script>
+(function(){
+  function fmt(sec){
+    if (sec < 60) return sec + '秒前';
+    if (sec < 3600) return Math.floor(sec/60) + '分前';
+    if (sec < 86400) return Math.floor(sec/3600) + '小时前';
+    return Math.floor(sec/86400) + '天前';
+  }
+  function refresh(){
+    var ind = document.getElementById('syncStatusIndicator');
+    if (!ind) return;
+    var sync = window.__sync;
+    var enabled = false;
+    try {
+      if (sync && typeof sync.syncEnabled === 'function') enabled = !!sync.syncEnabled();
+      else if (sync && typeof sync.isEnabled === 'function') enabled = !!sync.isEnabled();
+      else enabled = localStorage.getItem('cfw_sync_enabled_v1') === '1';
+    } catch(e){}
+    if (!enabled) {
+      ind.innerHTML = '<span class="sync-dot sync-off"></span><span class="sync-text">未启用</span>';
+      ind.title = '云同步未启用(点右上角设置开启)';
+      return;
+    }
+    var status = null;
+    try { status = (sync && typeof sync.getStatus === 'function' && sync.getStatus()) || null; } catch(e){}
+    var cls = 'sync-ok', txt = '已同步', title = '云同步已启用';
+    if (status) {
+      if (status.state === 'pushing' || status.state === 'pulling' || status.state === 'syncing' || status.busy) {
+        cls = 'sync-active'; txt = '同步中';
+      } else if (status.state === 'error' || status.error) {
+        cls = 'sync-error'; txt = '错误';
+        title = String(status.error || status.message || '同步错误');
+      } else {
+        var ts = status.lastPushAt || status.lastSyncAt || status.lastAt || 0;
+        if (ts) {
+          var sec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+          txt = fmt(sec);
+          title = '上次同步 ' + new Date(ts).toLocaleString();
+        }
+      }
+    } else {
+      var lp = parseInt(localStorage.getItem('cfw_sync_last_push_v1') || '0', 10);
+      if (lp > 0) {
+        var s2 = Math.max(0, Math.floor((Date.now() - lp) / 1000));
+        txt = fmt(s2);
+        title = '上次推送 ' + new Date(lp).toLocaleString();
+      } else {
+        txt = '等待中'; cls = 'sync-idle';
+      }
+    }
+    ind.innerHTML = '<span class="sync-dot ' + cls + '"></span><span class="sync-text">' + txt + '</span>';
+    ind.title = title;
+  }
+  if (window.__sync && typeof window.__sync.onStatus === 'function') {
+    try { window.__sync.onStatus(refresh); } catch(e){}
+  }
+  window.addEventListener('sync:status', refresh);
+  window.addEventListener('storage', function(e){ if (e.key && e.key.indexOf('cfw_sync_') === 0) refresh(); });
+  setInterval(refresh, 15000);
+  setTimeout(refresh, 200);
+  setTimeout(refresh, 1500);
+  setTimeout(refresh, 4000);
+})();
+</script>
+
+<!-- ══ 4.41-ui 右侧栏标签切换(群聊控制台 / 图像):避免图像快捷面板挤占、遮挡多智能体控制台 ══ -->
+<script>
+(function(){
+  var rs = document.getElementById('rightSidebar');
+  if (!rs) return;
+  var tabs = rs.querySelectorAll('.rs-tab');
+  var panels = rs.querySelectorAll('.rs-panel');
+  var slot = document.getElementById('fishbowlSlot');
+  function activate(name){
+    tabs.forEach(function(t){
+      var on = t.getAttribute('data-rs-tab') === name;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on) t.classList.remove('has-activity');
+    });
+    panels.forEach(function(p){
+      var on = p.getAttribute('data-rs-panel') === name;
+      p.classList.toggle('active', on);
+      if (on) p.removeAttribute('hidden'); else p.setAttribute('hidden', '');
+    });
+  }
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){ activate(t.getAttribute('data-rs-tab')); });
+  });
+  // 群聊控制台一旦挂进 #fishbowlSlot 就自动切到「群聊」tab,否则会被图像面板挡住看不见
+  if (slot){
+    var was = slot.childElementCount > 0;
+    try {
+      var mo = new MutationObserver(function(){
+        var now = slot.childElementCount > 0;
+        if (now && !was) activate('fishbowl');
+        else if (now){
+          var ft = rs.querySelector('.rs-tab[data-rs-tab="fishbowl"]');
+          if (ft && !ft.classList.contains('active')) ft.classList.add('has-activity');
+        }
+        was = now;
+      });
+      mo.observe(slot, { childList: true });
+    } catch(e){}
+  }
+  // 顶栏「多智能体」按钮:点完(若控制台已挂出)顺手切到群聊 tab
+  var mab = document.getElementById('multiAgentToggle');
+  if (mab) mab.addEventListener('click', function(){
+    setTimeout(function(){ if (slot && slot.childElementCount > 0) activate('fishbowl'); }, 80);
+  });
+  // 初始 tab:默认「群聊」(桌面常驻);空群聊时也停在群聊面板看引导提示,不再默认跳图像
+  activate('fishbowl');
+})();
+</script>
+
+<!-- 4.62: 「建微信群聊」入口仅在「多智能体」模式下显示(它本质是多人建群动作)。未开多智能体时隐藏按钮,提示先在顶栏切到多智能体。监听 multi-agent.js 的 multi-agent:changed 事件实时同步。 -->
+<script>
+(function(){
+  function isMultiOn(){
+    try {
+      if (window.__multi && window.__multi.isMulti) return !!window.__multi.isMulti();
+      return localStorage.getItem('tavern_multi_agent_mode_v1') === 'multi';
+    } catch(e){ return false; }
+  }
+  function sync(){
+    var btn = document.getElementById('wgConsoleBuildBtn');
+    var hint = document.getElementById('fishbowlEmptyHint');
+    if (!btn) return;
+    var on = isMultiOn();
+    btn.style.display = on ? '' : 'none';
+    if (hint) hint.textContent = on
+      ? '还没有进行中的群聊。点上方「建微信群聊」拉角色进群，或在群聊控制台里手动编排发言。'
+      : '群聊在「多智能体」模式下开启：点左侧「单智能体」切到「多智能体」，再来这里建群 / 编排发言。';
+  }
+  window.addEventListener('multi-agent:changed', sync);
+  document.addEventListener('DOMContentLoaded', sync);
+  sync();
+  setTimeout(sync, 300);
+})();
+</script>
+
+<!-- PWA Service Worker 注册:网络优先(在线永远拿最新、部署即生效;仅离线时回退缓存外壳),不缓存 /api /sync /img /config.js。SW 文件未上线时注册失败仅静默 warn,不影响现有功能 -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function (e) { console.warn('SW register failed', e); });
+    });
+  }
+</script>
+<!-- 脚本加载顺序:鉴权 → 同步 → 基础模块 → app.js 主应用 → 面板 UI 模块 → 交互增强 -->
+<!-- auth.js 必须最早加载:它拦截全局 fetch,给 /sync 和 /api/* 自动注入 Authorization header -->
+<script src="/js/text/core/auth.js"></script>
+<!-- 4.17: dev.js 必须在 auth.js 后、其他模块前。它 monkey-patch fetch 抓 /api/chat payload,需要包裹 auth.js 的 Authorization 注入 -->
+<script src="/js/text/core/dev.js"></script>
+<!-- 2026-06-04 私密解锁门:伪装态隐藏 [data-nsfw] + 版本号 7 连点触发访问码 + 解锁后给 /api/chat 注入 unlockToken。须在 dev.js 后(fetch patch 叠最外层) -->
+<script src="/js/text/core/unlock.js"></script>
+<!-- 4.37: 改回加载 Worker 动态下发的 /config.js。clientConfigJs() 生成纯 window.APP_* 赋值(无 export),且 worker 路由早于静态资源命中,以 src/config.js 为唯一模型源。
+       重组目录时误把带 ESM export 的服务端 config 放到了 /js/text/core/config.js,classic <script> 读到 export 即抛 SyntaxError 中断 → window.APP_MODELS_FREE 未赋值 → 模型下拉空。 -->
+<script src="/config.js"></script>
+<script src="/js/text/data/character.js"></script>
+<!-- 4.49 P2 世界书数据层:LS tavern_lorebook_v1,随 sync.js 自动上云;须在 app.js 前加载供发送时筛条目 -->
+<script src="/js/text/data/lorebook.js"></script>
+<script src="/js/text/engine/multi-agent.js"></script>
+<script src="/js/text/data/props.js"></script>
+<script src="/js/text/ui/theme.js"></script>
+<!-- sync.js 在 app.js 之前:启动时如已启用云同步会先 pull,避免 app.js init 读到老数据 -->
+<script src="/js/text/data/sync.js"></script>
+<script src="/js/text/engine/app.js"></script>
+  <script src="/js/text/ui/settings.js"></script>
+<!-- 网页内核(魂)· 工具调用内核 SDK。agent-kernel.js 用 ESM export,必须 type="module"(classic <script> 读到 export 会抛 SyntaxError → window.AgentKernel 不挂载);它底部仍会挂 globalThis.AgentKernel 供非模块代码取用。tools.js 是 IIFE,挂 window.OmnigentTools,仅在 buildRegistry() 运行时才取 AgentKernel,故 classic 加载、顺序无碍。app.js 的 agent 模式分支在「发送」时按需调用 window.AgentKernel.runAgentLoop + window.OmnigentTools.buildRegistry({onImage})。须在 app.js 之后。 -->
+<script type="module" src="/shared/agent-kernel.js"></script>
+<script src="/shared/tools.js"></script>
+<!-- 2026-06-16 Agent-Reach Skill 模块:fetch_page(Jina Reader) / web_search / search_bilibili / search_github / read_rss;须在 tools.js 之后(buildRegistry 调用时会取 AgentReach.defineTools) -->
+<script src="/shared/agent-reach.js"></script>
+<!-- 2026-06-18 环境感知 / 自检:self_diagnostics(环境快照 + 加载完整性 + 联网逐环节自检,联网委托 AgentReach.diagnose)。须在 agent-reach.js 之后,只读探测 -->
+<script src="/shared/env-context.js"></script>
+<!-- 4.69 Agent 控制台渲染器:渲染 runAgentLoop 事件流 → 右栏 Agent tab;提供 mountAgentConsole(container,{autoApprove}) → {onEvent,ensurePermission,clear,root} -->
+<script type="module" src="/shared/agent-console.js"></script>
+<!-- 2026-06-24 Skill 系统(window.__skills)·全局能力层(归 /shared/):纯 Markdown SKILL.md 加载器。把启用技能正文并进 app.js 的 payload.extraSystemPrompts(worker 零改),供文本侧及未来各壳共用;并往设置「对话」分类注入 Skill 管理卡(无 #setChatSlot 的页面自动跳过、仅暴露 window.__skills)。getEnabledPrompt 在 send 时才调用,放 shared 组、app.js 之后即可。 -->
+<script src="/shared/skills.js"></script>
+<!-- 本地语音 TTS(应用端独有):tts.js 自注入 🔊 朗读按钮,调本地 GPT-SoVITS(经 Tauri http_request 代理打到 127.0.0.1:9880,端口可在设置改 cfw_tts_port_v1)。IIFE 自执行 + MutationObserver 监听 .row.ai 注入按钮,无依赖;网页版无 window.__TAURI__ 时静默不启用。放 shared 这组末尾即可。 -->
+<script src="/shared/tts.js"></script>
+<!-- 2026-06-24 情绪音库切换层(window.__ttsEmotion):读 cfw_tts_emotion_map_v1 → 解析 [情绪:强度]/[场景] → pickRef 逐句切参考音,走 tts.js synthWith/enqueuePlay 串行播。依赖 tts.js,放其后;映射为空自动退回单音色,仅桌面 App 生效。 -->
+<script src="/shared/tts-emotion.js"></script>
+<!-- 鱼缸引擎 V3:必须在 app.js 之后(依赖 window.__app.sendOne / abortCurrent / injectModeratorMsg) -->
+<script src="/js/text/engine/fishbowl-engine.js"></script>
+<!-- 微信群聊(打包层):一键建群入口 + 微信群头部皮肤;复用 multi-agent + fishbowl + app.js(发言人气泡/@/自动接力) + wechat 风格。须在 app.js + fishbowl-engine 之后 -->
+<script src="/js/text/engine/wechat-group.js"></script>
+<script src="/js/text/ui/cost-log-ui.js"></script>
+<!-- 2026-05-29 微信发图 文本侧编排(raw):配合图像侧 window.__chatImage 契约,契约未上线走 mock -->
+<!-- 2026-05-29 image side chat-photo contract (raw): provides window.__chatImage; load before chat-image.js -->
+<script src="/shared/image-common.js"></script>
+<script src="/js/image/core/image-chat.js"></script>
+<script src="/js/image/core/chat-image.js"></script>
+<script src="/js/text/ui/chat-ux.js"></script>
+<!-- 选项分支芯片条(window.__choices):解析 [选项]…[/选项] → 输入框上方可点芯片;autopilot 半自动暂停出口也用它。依赖 #msg + #chat,放 chat-ux.js 之后 -->
+<script src="/js/text/ui/choices.js"></script>
+<!-- 自驱引擎(window.__autopilot):单角色叙事自驱循环,与鱼缸同辈。运行时依赖 app.js sendOne/abortCurrent + __fishbowl(互斥) + choices.js(暂停出口) + tts.js whenIdle(读完再续),均已先加载 -->
+<script src="/js/text/engine/autopilot.js"></script>
+<!-- 4.64 对话工具(接管左栏「文件上传」+「多开聊天」按钮):文件上传读文本注入输入框 + 同角色多条命名会话列表切换。依赖 window.__app 会话 hooks,须在 app.js 之后 -->
+<script src="/js/text/ui/chat-extras.js"></script>
+<!-- 4.7 解限编辑器（Unlimited Editor）：4-tab Modal · LS+IDB 混合存储 -->
+<script src="/js/text/ui/unlimited-editor.js"></script>
+<!-- Phase 2 图像嵌入三模块(顺序 embed→quickgen→gallery):
+     image-embed.js  工坊 Modal,运行时自动解锁左栏「图像(生/改)」按钮 + 往设置注入 图像 API Key 卡(LS cfw_image_key_v1)
+     image-quickgen.js 一键生/改图,注入右栏 #rightSidebar .sidebar-slot-placeholder(桌面) + 移动端 avatar/scene tab;提示词走 /api/chat 免费模式零费用
+     image-gallery.js 工坊内画廊 tab + 收藏,依赖 /img/r2/* /img/gallery;未配 R2/KV(IMAGES_BUCKET/IMAGES_SYNC)时返 501 → 纯本地降级,不阻塞 -->
+<script src="/js/image/gen/image-embed.js"></script>
+<script src="/js/image/gen/image-quickgen.js"></script>
+<script src="/js/image/store/image-gallery.js"></script>
+<!-- 2026-05-30 图像额度每日计数(单设备本地估算):fetch 层拦截 /img/v1 生成端点按张数累加今日用量 + Settings 计数卡 -->
+<script src="/js/image/quota/image-quota.js"></script>
+<!-- 2026-05-30 角色立绘桥接:读角色卡拼提示词→z-image 出半身立绘→一键设为发图基准图 + 全局画风设置 -->
+<script src="/js/image/gen/image-portrait.js"></script>
+<!-- 2026-05-30 提示词缓存去重:包 fetch 拦截重复生图,命中复用不计额度;须在 image-quota 之后加载 -->
+<script src="/js/image/store/image-cache.js"></script>
+<!-- 2026-05-30 纯本地画廊闭环:fetch 观察生图/改图→存 IndexedDB,每张设基准/插入/再改;须在 image-cache 之后加载 -->
+<script src="/js/image/store/image-album.js"></script>
+<!-- 2026-05-30 表情差分包:基于基准图 Qwen-Edit 只改表情,依赖 image-chat 的 editImage -->
+<script src="/js/image/gen/image-expressions.js"></script>
+<!-- 2026-05-30 角色头像:以基准图裁近景头像(可选表情),存 cfw_char_avatar_v1+发 avatar:changed -->
+<script src="/js/image/gen/image-avatar.js"></script>
+<!-- 4.9 删除 4.6 折叠 IIFE:原本手机默认 .fishbowl-side-panel.collapsed 只显 header 一条,与 4.8 鱼缸 tab toggle 冲突,导致打开关闭都会有「留一条 header」挡住思考按钮。改为完全靠 4.8 body.fishbowl-shown 切换整个面板 display,不留任何残影。.collapsed CSS 规则保留为 dead code(无 JS 加 class 不生效)。 -->
+<!-- 2026-06-08 欢迎页逻辑(应用端独有):观察 #chat 是否为空切 html.chat-empty;卡片填输入框聚焦(不自动发送);✕ 关闭写 LS。桌面再判定一次(Tauri 全局可能晚于 head 早脚本注入) -->
+<script>
+(function(){
+  var html = document.documentElement;
+  try { if (window.__TAURI__ || window.__TAURI_INTERNALS__ || window.isTauri || window.__TAURI_METADATA__ || /Tauri/i.test(navigator.userAgent) || location.protocol === 'tauri:' || location.hostname === 'tauri.localhost') html.classList.add('is-desktop'); } catch(e){}
+  var wrap = document.getElementById('omnigentWelcome');
+  var chat = document.getElementById('chat');
+  if (!wrap || !chat) return;
+  try { var h = new Date().getHours(); var g = h < 5 ? '夜深了' : h < 11 ? '上午好' : h < 13 ? '中午好' : h < 18 ? '下午好' : '晚上好'; var ge = document.getElementById('owGreeting'); if (ge) ge.textContent = g; } catch(e){}
+  function refresh(){
+    var n = 0, kids = chat.children;
+    for (var i=0;i<kids.length;i++){ var el = kids[i]; if (el.id === 'bottom-spacer' || el.id === 'omnigentWelcome') continue; n++; }
+    html.classList.toggle('chat-empty', n === 0);
+  }
+  try { new MutationObserver(refresh).observe(chat, { childList: true }); } catch(e){}
+  refresh(); setTimeout(refresh, 400); setTimeout(refresh, 1500);
+  wrap.addEventListener('click', function(e){
+    var card = e.target.closest('.ow-card'); if (!card) return;
+    var p = card.getAttribute('data-prompt') || '';
+    var ta = document.getElementById('msg');
+    if (ta) { ta.value = p; ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus(); }
+  });
+  var cb = document.getElementById('owCloseBtn');
+  if (cb) cb.addEventListener('click', function(){ try { localStorage.setItem('cfw_welcome_dismissed_v1', '1'); } catch(e){} html.classList.add('welcome-dismissed'); });
+})();
+</script>
+<script>
+/* 2026-06-11 NSFW 主题高级粒子特效:仅 lewd-peach/doll + 已解锁 + 非 reduced-motion 时运行;主题切走(含 Shift+Esc 紧急回极简)自动停。全屏 canvas pointer-events:none 不挡交互;光晕强度随 --pulse 起伏;tab 隐藏暂停省电 */
+(function(){
+  var cv = document.getElementById('lewdFxCanvas');
+  if (!cv || !cv.getContext) return;
+  var ctx = cv.getContext('2d');
+  var html = document.documentElement;
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var W = 0, H = 0, raf = 0, parts = [], running = false, reduce = false;
+  try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+  var PAL = {
+    'lewd-peach': ['rgba(255,150,170,', 'rgba(255,120,140,', 'rgba(255,196,150,', 'rgba(255,224,200,'],
+    'lewd-doll':  ['rgba(255,140,200,', 'rgba(255,180,224,', 'rgba(255,110,170,', 'rgba(255,245,250,']
+  };
+  function theme(){ return html.getAttribute('data-theme'); }
+  function pulse(){ var v = parseFloat(getComputedStyle(html).getPropertyValue('--pulse')); return isNaN(v) ? 0 : v; }
+  function active(){ var t = theme(); return !reduce && (t === 'lewd-peach' || t === 'lewd-doll') && html.classList.contains('unlocked'); }
+  function size(){ W = cv.width = Math.floor(window.innerWidth * DPR); H = cv.height = Math.floor(window.innerHeight * DPR); cv.style.width = window.innerWidth + 'px'; cv.style.height = window.innerHeight + 'px'; }
+  function mk(){ var pal = PAL[theme()] || PAL['lewd-peach']; return { x: Math.random()*W, y: Math.random()*H, r: (Math.random()*7+3)*DPR, c: pal[(Math.random()*pal.length)|0], vy: -(Math.random()*.35+.12)*DPR, a: Math.random()*.3+.12, tw: Math.random()*Math.PI*2, tws: Math.random()*.03+.012, sway: Math.random()*.6+.3, ph: Math.random()*Math.PI*2 }; }
+  function seed(){ parts = []; var n = Math.round(Math.min(32, window.innerWidth/34)); for (var i=0;i<n;i++) parts.push(mk()); }
+  function step(){
+    if (!active()){ stop(); return; }
+    ctx.clearRect(0,0,W,H);
+    var glow = .5 + pulse()*.5;
+    for (var i=0;i<parts.length;i++){
+      var p = parts[i];
+      p.ph += .01; p.tw += p.tws;
+      p.x += Math.sin(p.ph)*p.sway*DPR*.18; p.y += p.vy;
+      if (p.y + p.r < 0){ p.y = H + p.r; p.x = Math.random()*W; }
+      var a = (p.a*(.5 + (Math.sin(p.tw)*.5+.5)*.5)*glow).toFixed(3);
+      var g = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+      g.addColorStop(0, p.c + a + ')'); g.addColorStop(1, p.c + '0)');
+      ctx.beginPath(); ctx.fillStyle = g; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    raf = requestAnimationFrame(step);
+  }
+  function start(){ if (running) return; running = true; size(); seed(); cancelAnimationFrame(raf); raf = requestAnimationFrame(step); }
+  function stop(){ running = false; cancelAnimationFrame(raf); raf = 0; if (ctx && W) ctx.clearRect(0,0,W,H); }
+  function sync(){ if (active()) start(); else stop(); }
+  window.addEventListener('resize', function(){ if (running){ size(); seed(); } });
+  document.addEventListener('visibilitychange', function(){ if (document.hidden) stop(); else sync(); });
+  window.addEventListener('theme:changed', sync);
+  setInterval(sync, 1500);
+  setTimeout(sync, 300); setTimeout(sync, 1500);
+})();
+</script>
+<script>
+/* 2026-06-11 NSFW 够色气方案:纯 WebGL2 片元着色器 — 有机流体渐变(fbm 噪声) + 液态融球 metaball + 鼠标交互热感扭曲发光 + 胶片颗粒。screen 混合叠在界面上不挡字;仅 lewd-peach/doll + 已解锁 + 非 reduced-motion 运行;切走主题/紧急回极简自动停;后台暂停;WebGL2 不可用→静默回退 CSS 薄雾。降分辨率渲染省电 */
+(function(){
+  var cv = document.getElementById('lewdShaderCanvas');
+  if (!cv) return;
+  var gl = null;
+  try { gl = cv.getContext('webgl2', { alpha: true, premultipliedAlpha: false, antialias: false, depth: false }); } catch(e){}
+  if (!gl) return;
+  var html = document.documentElement;
+  var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
+  var DPR = Math.min(window.devicePixelRatio || 1, 1.5), SCALE = 0.6;
+  var VS = '#version 300 es\n' + 'in vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
+  var FS = '#version 300 es\n' + 'precision highp float; out vec4 o; uniform vec2 u_res; uniform float u_time; uniform vec2 u_mouse; uniform float u_mouseI; uniform float u_pulse; uniform float u_theme; float h(vec2 i){ return fract(sin(dot(i, vec2(127.1,311.7)))*43758.5453); } float vn(vec2 p){ vec2 i=floor(p), f=fract(p); vec2 u=f*f*(3.0-2.0*f); return mix(mix(h(i),h(i+vec2(1,0)),u.x), mix(h(i+vec2(0,1)),h(i+vec2(1,1)),u.x), u.y); } float fbm(vec2 p){ float s=0.0, a=0.5; mat2 mm=mat2(1.6,1.2,-1.2,1.6); for(int i=0;i<4;i++){ s+=a*vn(p); p=mm*p; a*=0.5; } return s; } void main(){ vec2 uv = gl_FragCoord.xy/u_res; vec2 asp=vec2(u_res.x/u_res.y,1.0); vec2 p=uv*asp; vec2 m=u_mouse*asp; float t=u_time*0.04; float breathe=0.7+0.3*sin(u_time*0.5)*(0.4+0.6*u_pulse); float md=distance(p,m); float mI=u_mouseI*exp(-md*3.0); vec2 q=vec2(fbm(p*1.5+t), fbm(p*1.5+vec2(5.2,1.3)-t)); p+=(q-0.5)*(0.45+0.6*mI); float f=pow(fbm(p*1.8), 1.4); float blob=0.0; for(int i=0;i<2;i++){ float fi=float(i); vec2 c=vec2(0.5+0.3*sin(u_time*0.18+fi*2.1), 0.5+0.28*cos(u_time*0.15+fi*2.7))*asp; float rad=0.22+0.06*sin(u_time*0.4+fi); blob+=rad*rad/(dot(p-c,p-c)+0.004); } blob=smoothstep(0.7,1.6,blob); float inten=clamp(f*0.85+blob*0.6+mI*1.2, 0.0, 1.5)*breathe; vec3 col; if(u_theme<0.5){ col=mix(vec3(0.28,0.02,0.08), vec3(0.85,0.16,0.34), smoothstep(0.05,0.6,inten)); col=mix(col, vec3(1.0,0.55,0.62), smoothstep(0.55,1.1,inten)); col=mix(col, vec3(1.0,0.82,0.7), smoothstep(1.05,1.4,inten)); } else { col=mix(vec3(0.6,0.1,0.34), vec3(1.0,0.42,0.7), smoothstep(0.05,0.6,inten)); col=mix(col, vec3(1.0,0.7,0.86), smoothstep(0.55,1.1,inten)); col=mix(col, vec3(1.0,0.92,0.96), smoothstep(1.05,1.4,inten)); } col*=inten; col+=vec3(1.0,0.4,0.5)*mI*0.7; float side=smoothstep(0.14,0.42,abs(uv.x-0.5)); col*=mix(0.45,1.0,side); float vig=smoothstep(1.25,0.35,distance(uv,vec2(0.5))); col*=mix(0.8,1.0,vig); o=vec4(max(col,0.0),1.0); }';
+  function sh(type, src){ var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){ return null; } return s; }
+  var vs = sh(gl.VERTEX_SHADER, VS), fs = sh(gl.FRAGMENT_SHADER, FS);
+  if(!vs || !fs) return;
+  var prog = gl.createProgram(); gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.bindAttribLocation(prog, 0, 'p'); gl.linkProgram(prog);
+  if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
+  gl.useProgram(prog);
+  var buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  var U = { res: gl.getUniformLocation(prog,'u_res'), time: gl.getUniformLocation(prog,'u_time'), mouse: gl.getUniformLocation(prog,'u_mouse'), mI: gl.getUniformLocation(prog,'u_mouseI'), pulse: gl.getUniformLocation(prog,'u_pulse'), theme: gl.getUniformLocation(prog,'u_theme') };
+  var raf = 0, running = false, t0 = performance.now();
+  var mx = 0.5, my = 0.5, tmx = 0.5, tmy = 0.5, mInf = 0.0;
+  function theme(){ return html.getAttribute('data-theme'); }
+  function pulse(){ var v = parseFloat(getComputedStyle(html).getPropertyValue('--pulse')); return isNaN(v) ? 0 : v; }
+  function active(){ var th = theme(); return !reduce && (th === 'lewd-peach' || th === 'lewd-doll') && html.classList.contains('unlocked'); }
+  function size(){ var w = Math.max(2, Math.floor(window.innerWidth*DPR*SCALE)), hh = Math.max(2, Math.floor(window.innerHeight*DPR*SCALE)); if(cv.width !== w || cv.height !== hh){ cv.width = w; cv.height = hh; } cv.style.width = window.innerWidth + 'px'; cv.style.height = window.innerHeight + 'px'; gl.viewport(0, 0, w, hh); }
+  function render(){
+    if(!active()){ stop(); return; }
+    size();
+    mx += (tmx-mx)*0.08; my += (tmy-my)*0.08; mInf *= 0.94;
+    var tt = (performance.now() - t0)/1000.0;
+    gl.uniform2f(U.res, cv.width, cv.height); gl.uniform1f(U.time, tt);
+    gl.uniform2f(U.mouse, mx, my); gl.uniform1f(U.mI, mInf); gl.uniform1f(U.pulse, pulse());
+    gl.uniform1f(U.theme, theme() === 'lewd-doll' ? 1.0 : 0.0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    raf = requestAnimationFrame(render);
+  }
+  function start(){ if(running) return; running = true; html.classList.add('lewd-shader-on'); size(); cancelAnimationFrame(raf); raf = requestAnimationFrame(render); }
+  function stop(){ running = false; html.classList.remove('lewd-shader-on'); cancelAnimationFrame(raf); raf = 0; }
+  function sync(){ if(active()) start(); else stop(); }
+  window.addEventListener('pointermove', function(e){ tmx = e.clientX/window.innerWidth; tmy = 1.0 - e.clientY/window.innerHeight; mInf = 1.0; }, { passive: true });
+  window.addEventListener('resize', function(){ if(running) size(); });
+  document.addEventListener('visibilitychange', function(){ if(document.hidden) stop(); else sync(); });
+  window.addEventListener('theme:changed', sync);
+  setInterval(sync, 1500); setTimeout(sync, 300); setTimeout(sync, 1500);
+})();
+</script>
+<script>
+(function(){
+  function init(){
+    var nav = document.querySelector('.settings-cat-nav');
+    if(!nav) return;
+    var items = Array.prototype.slice.call(nav.querySelectorAll('.scn-item'));
+    var panels = Array.prototype.slice.call(document.querySelectorAll('#settings .set-cat'));
+    if(!items.length || !panels.length) return;
+    var LS = 'cfw_settings_cat_v1';
+    function show(cat){
+      var hit = false;
+      panels.forEach(function(p){ var on = p.getAttribute('data-cat') === cat; p.classList.toggle('active', on); if(on) hit = true; });
+      items.forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-cat') === cat); });
+      if(hit){ try{ localStorage.setItem(LS, cat); }catch(e){} var s = document.getElementById('settings'); if(s) s.scrollTop = 0; }
+      return hit;
+    }
+    function firstVisible(){ for(var i=0;i<items.length;i++){ if(items[i].offsetParent !== null) return items[i].getAttribute('data-cat'); } return items[0].getAttribute('data-cat'); }
+    items.forEach(function(b){ b.addEventListener('click', function(){ show(b.getAttribute('data-cat')); }); });
+    var saved = null; try{ saved = localStorage.getItem(LS); }catch(e){}
+    if(!saved || !show(saved)) show(firstVisible());
+    function onOpen(){ setTimeout(function(){ var cur = nav.querySelector('.scn-item.active'); if(!cur || cur.offsetParent === null) show(firstVisible()); var s = document.getElementById('settings'); if(s) s.scrollTop = 0; }, 0); }
+    ['settingsBtn'].forEach(function(id){ var el = document.getElementById(id); if(el) el.addEventListener('click', onOpen); });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+</script>
+<!-- 2026-06-15 settings 动态注入卡重定向: image-embed / image-portrait 等脚本用 settings.appendChild(card) 把卡挂到 #settings 根, 跑到 .settings-shell 外面变成 "永远可见的孤儿卡"。这里监听 #settings 直接子节点的新增, 把孤儿卡全部移入 #settingsImageSlot(发图·图像分类), 使其受 tab 系统管控 -->
+<script>
+(function(){
+  var settings = document.getElementById('settings');
+  var slot = document.getElementById('settingsImageSlot');
+  if (!settings || !slot) return;
+  var shell = settings.querySelector('.settings-shell');
+  var SKIP_IDS = { settingsHeader: 1, appVersionTag: 1, settingsFooter: 1 };
+  function isOrphan(node){
+    if (!node || node.nodeType !== 1) return false;
+    if (SKIP_IDS[node.id]) return false;
+    if (node === shell) return false;
+    return node.parentNode === settings && !(shell && shell.contains(node));
+  }
+  // 初始扫(image-embed 等可能在此脚本之前已 appendChild)
+  Array.prototype.slice.call(settings.children).forEach(function(child){
+    if (isOrphan(child)) slot.appendChild(child);
+  });
+  // 持续监听后续注入
+  var ob = new MutationObserver(function(muts){
+    muts.forEach(function(m){
+      m.addedNodes.forEach(function(n){ if (isOrphan(n)) slot.appendChild(n); });
+    });
+  });
+  ob.observe(settings, { childList: true });
+  // 打开设置时再扫一次(万一有脚本在 settingsBtn click 后才注入)
+  var sb = document.getElementById('settingsBtn');
+  if (sb) sb.addEventListener('click', function(){
+    setTimeout(function(){
+      Array.prototype.slice.call(settings.children).forEach(function(child){
+        if (isOrphan(child)) slot.appendChild(child);
+      });
+    }, 120);
+  });
+})();
+</script>
+<!-- 4.71 Agent 模式 UI:左侧栏按钮 + 互斥多智能体 + 桌面右栏/移动端底部 Agent tab 双端挂载 -->
+<script>
+(function(){
+  var LS_AGENT = 'cfw_agent_mode_v1';
+  var LS_MULTI = 'tavern_multi_agent_mode_v1';
+  var btn = null, multiBtn = null, fishbowlTab = null, fishbowlSlot = null, emptyHint = null;
+  var mobileAgentTabEl = null, mobileAgentPanel = null;
+
+  function isAgentOn(){ return localStorage.getItem(LS_AGENT) === '1'; }
+  function isMobile(){ return window.matchMedia('(max-width: 1023px)').matches; }
+
+  function updateBtnUI(){
+    if (!btn) return;
+    var on = isAgentOn();
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? 'Agent 模式：开启（点击关闭）' : 'Agent 模式（点击开启）';
+    // 移动端 tab 激活态由 mountAgentPanel/unmountAgentPanel 管理。
+    // 不在此同步：否则 updateBtnUI 给 tab 加了 active，用户再点 tab 时底部 tab 脚本会判断已激活→打折而非展开。
+  }
+
+  // 创建并返回 agent console wrapper（挂到 container 上）
+  function createConsoleIn(container, consoleKey){
+    var ph = document.getElementById('__mobileAgentPlaceholder');
+    if (ph) ph.style.display = 'none';
+    container.innerHTML = '';
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex;flex-direction:column;height:100%;min-height:0;';
+    container.appendChild(wrapper);
+    if (window.mountAgentConsole && typeof window.mountAgentConsole === 'function') {
+      var r = window.mountAgentConsole(wrapper, { autoApprove: false });
+      window[consoleKey] = r;
+    } else {
+      wrapper.innerHTML = '<div style="padding:16px;font-size:12px;color:#888;line-height:1.7;display:flex;align-items:flex-start;gap:8px;"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none;margin-top:1px"><rect x="1" y="5" width="12" height="8" rx="1.5"/><path d="M4 5V3a3 3 0 0 1 6 0v2"/><circle cx="7" cy="9" r="1"/></svg><span>Agent 控制台加载中，请稍候或刷新重试。</span></div>';
+      window[consoleKey] = null;
+    }
+  }
+
+  // Bug2 fix: suppressTabActivation=true 时不自动 click 底部 Agent tab（启动恢复场景）
+  // 防止 Tauri 窄窗口（<1024px 触发移动端布局）在页面打开时 Agent panel 全屏覆盖聊天区。
+  function mountAgentPanel(suppressTabActivation){
+    if (window.__agentConsole && window.__agentConsole.root) return; // 已挂载
+
+    if (isMobile()) {
+      // ── 移动端：挂入底部 Agent 面板 ──
+      if (!mobileAgentPanel) return;
+      createConsoleIn(mobileAgentPanel, '__agentConsole');
+      // 仅用户主动触发时激活 tab；启动恢复时 suppressTabActivation=true，避免全屏覆盖聊天区
+      if (!suppressTabActivation && mobileAgentTabEl && !mobileAgentTabEl.classList.contains('active')) {
+        mobileAgentTabEl.click();
+      }
+    } else {
+      // ── 桌面端：挂入右侧栏 fishbowlSlot ──
+      if (!fishbowlSlot) return;
+      if (fishbowlTab) { var sp = fishbowlTab.querySelector('span:not(.rs-dot)'); if (sp) sp.textContent = 'Agent'; }
+      if (emptyHint) emptyHint.style.display = 'none';
+      var wrapper = document.createElement('div');
+      wrapper.id = '__agentConsoleRoot';
+      wrapper.style.cssText = 'display:flex;flex-direction:column;height:100%;min-height:0;';
+      fishbowlSlot.innerHTML = '';
+      fishbowlSlot.removeAttribute('style');
+      fishbowlSlot.className = 'sidebar-slot';
+      fishbowlSlot.appendChild(wrapper);
+      if (window.mountAgentConsole && typeof window.mountAgentConsole === 'function') {
+        var r = window.mountAgentConsole(wrapper, { autoApprove: false });
+        window.__agentConsole = r;
+      } else {
+        wrapper.innerHTML = '<div style="padding:16px;font-size:12px;color:#888;line-height:1.7;display:flex;align-items:flex-start;gap:8px;"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="flex:none;margin-top:1px"><rect x="1" y="5" width="12" height="8" rx="1.5"/><path d="M4 5V3a3 3 0 0 1 6 0v2"/><circle cx="7" cy="9" r="1"/></svg><span>Agent 控制台加载中，或刷新重试</span></div>';
+      }
+      // 切到群聊(Agent) tab
+      var ft = document.querySelector('.rs-tab[data-rs-tab="fishbowl"]');
+      if (ft && !ft.classList.contains('active')) ft.click();
+    }
+  }
+
+  function unmountAgentPanel(){
+    // 桌面端清理
+    if (fishbowlTab) { var sp = fishbowlTab.querySelector('span:not(.rs-dot)'); if (sp && sp.textContent === 'Agent') sp.textContent = '群聊'; }
+    if (emptyHint) emptyHint.style.display = '';
+    if (fishbowlSlot) {
+      fishbowlSlot.innerHTML = '';
+      fishbowlSlot.removeAttribute('style');
+      fishbowlSlot.className = 'sidebar-slot';
+    }
+    // 移动端清理
+    if (mobileAgentPanel) {
+      mobileAgentPanel.innerHTML = '';
+      // 恢复 placeholder
+      var ph = document.createElement('div');
+      ph.id = '__mobileAgentPlaceholder';
+      ph.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--muted,#888);font-size:13px;line-height:1.6;text-align:center;padding:0 24px;';
+      ph.innerHTML = '<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M9 11V7a3 3 0 0 1 6 0v4"/><circle cx="12" cy="16" r="1.2"/></svg><span style="opacity:.55">点左侧「Agent 模式」开启<br>或在左侧栏点「Agent 模式」按钮</span>';
+      mobileAgentPanel.appendChild(ph);
+    }
+    if (mobileAgentTabEl) mobileAgentTabEl.classList.remove('active');
+    // 关闭移动端面板(若当前激活)
+    var panels = document.querySelectorAll('.mobile-tab-panel');
+    panels.forEach(function(p){ if (p.getAttribute('data-tab') === 'agent') p.classList.remove('active'); });
+    window.__agentConsole = null;
+  }
+
+  function applyAgentMode(on){
+    localStorage.setItem(LS_AGENT, on ? '1' : '0');
+    if (on) {
+      // 互斥：关掉多智能体
+      if (localStorage.getItem(LS_MULTI) === 'multi') {
+        localStorage.setItem(LS_MULTI, 'single');
+        var ma = document.getElementById('multiAgentToggle');
+        if (ma) ma.dispatchEvent(new CustomEvent('force-off', { bubbles: true }));
+        window.dispatchEvent(new CustomEvent('multi-agent:changed'));
+      }
+      mountAgentPanel();
+    } else {
+      unmountAgentPanel();
+    }
+    updateBtnUI();
+  }
+
+  function init(){
+    btn = document.getElementById('agentModeBtn');
+    multiBtn = document.getElementById('multiAgentToggle');
+    fishbowlTab = document.querySelector('.rs-tab[data-rs-tab="fishbowl"]');
+    fishbowlSlot = document.getElementById('fishbowlSlot');
+    emptyHint = document.getElementById('fishbowlEmptyHint');
+    mobileAgentTabEl = document.getElementById('mobileAgentTab');
+    mobileAgentPanel = document.getElementById('mobileTabPanel-agent');
+
+    if (btn) btn.addEventListener('click', function(){ applyAgentMode(!isAgentOn()); });
+
+    // 移动端 Agent tab 点击：未开启时顺手开启 Agent 模式
+    if (mobileAgentTabEl) {
+      mobileAgentTabEl.addEventListener('click', function(){
+        if (!isAgentOn()) {
+          // tab 点击会先被底部 tab 脚本处理，这里补充开启 agent 模式
+          setTimeout(function(){
+            localStorage.setItem(LS_AGENT, '1');
+            if (!window.__agentConsole || !window.__agentConsole.root) mountAgentPanel();
+            updateBtnUI();
+          }, 20);
+        }
+      });
+    }
+
+    // 互斥：多智能体开启 → 关 Agent
+    if (multiBtn) {
+      multiBtn.addEventListener('click', function(){
+        setTimeout(function(){
+          if (localStorage.getItem(LS_MULTI) === 'multi' && isAgentOn()) {
+            localStorage.setItem(LS_AGENT, '0');
+            unmountAgentPanel();
+            updateBtnUI();
+          }
+        }, 80);
+      });
+    }
+    updateBtnUI();
+    if (isAgentOn()) setTimeout(function(){ mountAgentPanel(true); }, 600); // suppressTabActivation=true：启动恢复不自动激活全屏 tab
+  }
+
+  var _agentInited = false;
+  function safeInit(){ if (_agentInited) return; _agentInited = true; init(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', safeInit); else safeInit();
+  setTimeout(safeInit, 400);
+})();
+</script>
+<!-- 2026-06-16 Dev 一键导出按钮逻辑 -->
+<script>
+(function(){
+  function bindDevExport() {
+    var btn = document.getElementById('devExportBtn');
+    if (!btn || btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener('click', function() {
+      try {
+        var obj = {};
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          try { obj[k] = JSON.parse(localStorage.getItem(k)); } catch(e) { obj[k] = localStorage.getItem(k); }
+        }
+        var lines = ['# Omnigent localStorage 导出', '', '> 导出时间：' + new Date().toLocaleString() + '  ', '> 条目总数：' + Object.keys(obj).length + ' 条', '> 来源：Omnigent Dev Export', ''];
+        Object.keys(obj).sort().forEach(function(k) {
+          lines.push('### `' + k + '`');
+          var v = obj[k];
+          if (v !== null && typeof v === 'object') {
+            lines.push('```json'); lines.push(JSON.stringify(v, null, 2)); lines.push('```');
+          } else { lines.push('```'); lines.push(String(v)); lines.push('```'); }
+          lines.push('');
+        });
+        var blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'omnigent-localStorage-' + new Date().toISOString().slice(0,10) + '.md';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+        var s = document.getElementById('devExportStatus');
+        if (s) s.textContent = '已导出 ' + Object.keys(obj).length + ' 条数据';
+      } catch(e) {
+        var s = document.getElementById('devExportStatus');
+        if (s) s.textContent = '导出失败: ' + e.message;
+      }
+    });
+  }
+  // 设置面板打开时绑定(卡可能还未渲染)
+  var sb = document.getElementById('settingsBtn');
+  if (sb) sb.addEventListener('click', function(){ setTimeout(bindDevExport, 200); });
+  setTimeout(bindDevExport, 1000);
+})();
+</script>
+</body>
+</html>
