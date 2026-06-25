@@ -1,11 +1,11 @@
 # src-tauri · Tauri 2 桌面/移动打包工程
 
-把 haode123.top 这套 web UI 用 Tauri 2 打包成可安装的桌面/移动应用。只是壳 + 远程加载,后端、模型、Cloudflare 一律不动。
+把 Omnigent 这套 web UI 用 Tauri 2 打包成可安装的桌面/移动应用。只是壳 + 本地前端加载,后端、模型、Cloudflare 一律不动。
 
 ## 形态约定
-- 窗口直接远程加载 https://haode123.top（见 tauri.conf.json → app.windows[0].url）。
-- build.frontendDist 指向本地占位目录 frontend/，仅供构建器使用，实际不加载。
-- 不注入任何 Tauri IPC，远程站点按普通网页运行，前端零改动。
+- 窗口加载本地打包的前端 frontend/（见 tauri.conf.json → build.frontendDist）。首次启动在启动页填入你自部署的 *.workers.dev 地址即可使用。
+- build.frontendDist 指向本地前端目录 frontend/。
+- 桌面端语音(TTS)走原生命令直连本机 GPT-SoVITS,其余按普通网页运行,前端零侵入。
 
 ## 两种出包方式
 
